@@ -335,11 +335,19 @@ def run_dqn(cfg, logger, trial=None):
         # All rewards, dimensions (# of evaluations x # of episodes)
         stats_data = torch.stack(stats_data, axis=-1)
         print(np.shape(stats_data))
-        print("policy_distances ", policy_distances)
+        #print("policy_distances ", policy_distances)
         np.savetxt(filename, stats_data.numpy())
         fo.flush()
         fo.close()
-        np.savetxt("/home/tibi/bbrl_algos/src/bbrl_algos/algos/dqn/distances.txt", np.array(policy_distances))
+        # Get the directory of the current script
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+
+        # Construct the relative path to the file
+        relative_path = os.path.join(script_directory, "distances.txt")
+        #np.savetxt("/home/tibi/bbrl_algos/src/bbrl_algos/algos/dqn/distances.txt", np.array(policy_distances))
+        # Save the file using the relative path
+        np.savetxt(relative_path, np.array(policy_distances))
+
 
     return best_reward
 
@@ -352,6 +360,7 @@ def calculate_euclidean_distance(policy1, policy2):
         distance += torch.norm(policy1[i] - policy2[i], p=2) #on fait torch.norm ou vraiment (policy1[i] - policy2[i])**2
 
     return distance
+    #je pense c'est plutot l'autre qui marche bien, a tester et dis moi ce que tu penses
 """
 
 def calculate_euclidean_distance(policy1, policy2):
