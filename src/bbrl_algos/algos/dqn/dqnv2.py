@@ -352,7 +352,6 @@ def calculate_euclidean_distance(policy1, policy2):
         distance += torch.norm(policy1[i] - policy2[i], p=2) #on fait torch.norm ou vraiment (policy1[i] - policy2[i])**2
 
     return distance
-    #je pense c'est plutot l'autre qui marche bien, a tester et dis moi ce que tu penses
 """
 
 def calculate_euclidean_distance(policy1, policy2):
