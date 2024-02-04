@@ -150,7 +150,6 @@ def setup_optimizer(optimizer_cfg, q_agent):
 # %%
 def run_dqn(cfg, logger, trial=None):
 
-    #added by me
     policy_distances = []
 
     best_reward = float("-inf")
