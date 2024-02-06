@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import torch
 import torch.nn as nn
+import plotly.graph_objects as go
 
 
 """
@@ -62,6 +63,86 @@ def write_in_file(filename, data):
             gradient_file.write(f"{data}\n")
 
     
+
+def dynamic_histograms(filename):
+    # Get the directory of the current script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Construct the relative path to the file
+    if filename == "distances.txt":
+        distance_file_path = os.path.join(script_directory, filename)
+
+        # Read the file
+        with open(distance_file_path, "r") as distance_file:
+            distance_data = [float(line.strip()) for line in distance_file.readlines()]
+
+        # Create histogram
+        fig = go.Figure()
+
+        # Add histogram trace
+        fig.add_trace(go.Histogram(x=distance_data))
+
+        # Update layout
+        fig.update_layout(
+            title='Répartition des valeurs de la distance',
+            xaxis=dict(title='Intervalles de valeurs pris par la distance'),
+            yaxis=dict(title='Nombre de valeurs par intervalle'),
+            bargap=0.05,  # gap between bars of adjacent location coordinates
+            bargroupgap=0.1  # gap between bars of the same location coordinates
+        )
+
+        # Show plot
+        fig.show()
+
+
+
+    elif filename == "gradient_norm.txt":
+        grad_file_path = os.path.join(script_directory, filename)
+
+        with open(grad_file_path, "r") as grad_file:
+            grad_data = [float(line.strip()) for line in grad_file.readlines()]
+
+        # Create histogram
+        fig = go.Figure()
+
+        # Add histogram trace
+        fig.add_trace(go.Histogram(x=grad_data))
+
+        # Update layout
+        fig.update_layout(
+            title='Répartition des valeurs du gradient',
+            xaxis=dict(title='Intervalles de valeurs pris par le gradient'),
+            yaxis=dict(title='Nombre de valeurs par intervalle'),
+            bargap=0.05,  # gap between bars of adjacent location coordinates
+            bargroupgap=0.1  # gap between bars of the same location coordinates
+        )
+
+        # Show plot
+        fig.show()
+
+    elif filename == "loss_values.txt":
+        loss_file_path = os.path.join(script_directory, filename)
+
+        with open(loss_file_path, "r") as loss_file:
+            loss_data = [float(line.strip()) for line in loss_file.readlines()]
+
+        # Create histogram
+        fig = go.Figure()
+
+        # Add histogram trace
+        fig.add_trace(go.Histogram(x=loss_data))
+
+        # Update layout
+        fig.update_layout(
+            title='Répartition des valeurs de la loss',
+            xaxis=dict(title='Intervalles de valeurs pris par la loss'),
+            yaxis=dict(title='Nombre de valeurs par intervalle'),
+            bargap=0.05,  # gap between bars of adjacent location coordinates
+            bargroupgap=0.1  # gap between bars of the same location coordinates
+        )
+
+        # Show plot
+        fig.show()
 
 
 
@@ -160,24 +241,4 @@ def histograms(filename):
     # Keep the plot interactive
     # plt.show(block=True)
 
-    # plt.show()
-
-"""
-def on_mouse_move(event):
-    global data
-    if event.inaxes is not None:
-        if event.button == 'left' and event.xdata is not None:
-            new_data = np.random.randn(100) + event.xdata
-            update_histogram(new_data)
-
-
-def update_histogram(new_data):
-    global counts, bins
-    new_counts, _ = np.histogram(new_data, bins=bins)
-    counts += new_counts
-    for rect, h in zip(plt.gca().patches, counts):
-        rect.set_height(h)
-    plt.gca().relim()
-    plt.gca().autoscale_view()
-    plt.draw()
-"""
+    plt.show()
