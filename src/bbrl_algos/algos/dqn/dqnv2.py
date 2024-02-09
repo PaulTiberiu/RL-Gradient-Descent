@@ -59,9 +59,11 @@ sys.path.append(visualization_path)
 from visualization_tools import histograms
 from visualization_tools import calculate_euclidean_distance
 from visualization_tools import calculate_gradient_norm
+from visualization_tools import calculate_gradient_normv2
 from visualization_tools import write_in_file   
 from visualization_tools import dynamic_histograms
-
+from visualization_tools import delete_file
+from visualization_tools import is_grad_norm_proportional_to_distance
 
 
 matplotlib.use("TkAgg")
@@ -194,6 +196,13 @@ def run_dqn(cfg, logger, trial=None):
 
     prev_policy = None
 
+    # Delete the existing txt files that are useful for the visualization
+    delete_file("distances.txt")
+    delete_file("gradient_norm.txt")
+    delete_file("loss_values.txt")
+    delete_file("facteurs_k.txt")
+    delete_file("differences_grad_distances.txt")
+
     while nb_steps < cfg.algorithm.n_steps:
         # Decay the explorer epsilon
         explorer = train_agent.agent.get_by_name("action_selector")
@@ -261,6 +270,8 @@ def run_dqn(cfg, logger, trial=None):
 
         optimizer.zero_grad()
         critic_loss.backward()
+        
+    
         torch.nn.utils.clip_grad_norm_(
             q_agent.parameters(), cfg.algorithm.max_grad_norm
         )
@@ -329,15 +340,11 @@ def run_dqn(cfg, logger, trial=None):
 
         
         # Backward pass and optimization
-        optimizer.step()
 
         # Calculate Euclidean distance between successive policies
         if prev_policy is not None:
             current_policy = torch.nn.utils.parameters_to_vector(eval_agent.parameters())
-            #print("prev_policy ", prev_policy)
-            #print("current_policy", current_policy)
             distance = calculate_euclidean_distance(prev_policy, current_policy)
-            #print("Distance between successive policies:", distance)
 
             write_in_file("distances.txt", distance)
 
@@ -361,14 +368,26 @@ def run_dqn(cfg, logger, trial=None):
         fo.flush()
         fo.close()
 
+
+    # Testing if the norm of gradients is proportional to the learning rate
+    # then stocking the k values in a txt file
+    print(is_grad_norm_proportional_to_distance(cfg)) # VRAI POUR MAX_GRAD_NORM = 1000 et a 0.02 pret
+
     # Call the histograms function with the desired file you want to plot
     histograms("distances.txt")
     histograms("gradient_norm.txt")
     histograms("loss_values.txt")
 
+    histograms("differences_grad_distances.txt")
+    histograms("facteurs_k.txt")
+
+
     dynamic_histograms("distances.txt")
     dynamic_histograms("gradient_norm.txt")
     dynamic_histograms("loss_values.txt")
+
+    dynamic_histograms("differences_grad_distances.txt")
+    dynamic_histograms("facteurs_k.txt")
 
  
     return best_reward
