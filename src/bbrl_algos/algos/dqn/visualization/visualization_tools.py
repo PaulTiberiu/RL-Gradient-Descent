@@ -404,6 +404,8 @@ def histograms(filename):
 
     plt.show()
 
+
+# TO BE MODIFIED
 def is_grad_norm_proportional_to_distance(cfg):
     
     eps = 0.02
