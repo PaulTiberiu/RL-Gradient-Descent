@@ -7,6 +7,7 @@
 
 import copy
 import os
+import sys
 import numpy as np
 from typing import Callable, List
 
@@ -41,11 +42,26 @@ from bbrl.utils.chrono import Chrono
 # HYDRA_FULL_ERROR = 1
 import matplotlib
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from bbrl_gymnasium.envs.maze_mdp import MazeMDPEnv
 from bbrl_algos.wrappers.env_wrappers import MazeMDPContinuousWrapper
 from bbrl.agents.gymnasium import make_env, ParallelGymAgent
 from functools import partial
+
+
+# Add the directory containing visualization_tools.py to the Python path
+
+visualization_path = os.path.join(os.path.dirname(__file__), "visualization")
+sys.path.append(visualization_path)
+
+# Now import the histogram function
+from visualization_tools import histograms
+from visualization_tools import calculate_euclidean_distance
+from visualization_tools import calculate_gradient_norm
+from visualization_tools import write_in_file   
+from visualization_tools import dynamic_histograms
+
 
 
 matplotlib.use("TkAgg")
@@ -148,6 +164,7 @@ def setup_optimizer(optimizer_cfg, q_agent):
 
 # %%
 def run_dqn(cfg, logger, trial=None):
+
     best_reward = float("-inf")
     if cfg.collect_stats:
         directory = "./dqn_data/"
@@ -174,6 +191,8 @@ def run_dqn(cfg, logger, trial=None):
     # 6) Define the steps counters
     nb_steps = 0
     tmp_steps_eval = 0
+
+    prev_policy = None
 
     while nb_steps < cfg.algorithm.n_steps:
         # Decay the explorer epsilon
@@ -235,6 +254,10 @@ def run_dqn(cfg, logger, trial=None):
 
         # Store the loss
         logger.add_log("critic_loss", critic_loss, nb_steps)
+
+        write_in_file("loss_values.txt", critic_loss.item())
+
+
 
         optimizer.zero_grad()
         critic_loss.backward()
@@ -304,6 +327,32 @@ def run_dqn(cfg, logger, trial=None):
                 if trial.should_prune():
                     raise optuna.TrialPruned()
 
+        
+        # Backward pass and optimization
+        optimizer.step()
+
+        # Calculate Euclidean distance between successive policies
+        if prev_policy is not None:
+            current_policy = torch.nn.utils.parameters_to_vector(eval_agent.parameters())
+            #print("prev_policy ", prev_policy)
+            #print("current_policy", current_policy)
+            distance = calculate_euclidean_distance(prev_policy, current_policy)
+            #print("Distance between successive policies:", distance)
+
+            write_in_file("distances.txt", distance)
+
+            
+
+        # Updating the previous policy
+        prev_policy = torch.nn.utils.parameters_to_vector(eval_agent.parameters())
+
+        grad_norm = calculate_gradient_norm(q_agent)
+        #print("Gradient Norm:", grad_norm)
+
+        write_in_file("gradient_norm.txt", grad_norm)
+
+
+
     if cfg.collect_stats:
         # All rewards, dimensions (# of evaluations x # of episodes)
         stats_data = torch.stack(stats_data, axis=-1)
@@ -312,14 +361,23 @@ def run_dqn(cfg, logger, trial=None):
         fo.flush()
         fo.close()
 
-    return best_reward
+    # Call the histograms function with the desired file you want to plot
+    histograms("distances.txt")
+    histograms("gradient_norm.txt")
+    histograms("loss_values.txt")
 
+    dynamic_histograms("distances.txt")
+    dynamic_histograms("gradient_norm.txt")
+    dynamic_histograms("loss_values.txt")
+
+ 
+    return best_reward
 
 # %%
 @hydra.main(
     config_path="configs/",
     config_name="dqn_cartpole.yaml",
-    # config_name="dqn_lunar_lander.yaml",
+    #config_name="dqn_lunar_lander.yaml", #cartpole
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
