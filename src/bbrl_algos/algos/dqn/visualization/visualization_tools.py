@@ -405,7 +405,6 @@ def histograms(filename):
     plt.show()
 
 
-# TO BE MODIFIED
 def is_grad_norm_proportional_to_distance(cfg):
     
     eps = 0.02
@@ -426,15 +425,14 @@ def is_grad_norm_proportional_to_distance(cfg):
     grad_values = [float(value) for value in grad_data]
 
     for i in range(len(distance_values)):
-        result = True
         k = distance_values[i] / grad_values[i]
         write_in_file("facteurs_k.txt", k)
         write_in_file("differences_grad_distances.txt", abs(k - cfg.optimizer.lr))
 
 
         if(abs(k - cfg.optimizer.lr) > eps):
-            result = False
+            return False
             #print(abs(k - cfg.optimizer.lr))
 
-    return result
+    return True
     
