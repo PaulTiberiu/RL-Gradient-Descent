@@ -49,22 +49,14 @@ from bbrl_algos.wrappers.env_wrappers import MazeMDPContinuousWrapper
 from bbrl.agents.gymnasium import make_env, ParallelGymAgent
 from functools import partial
 
-
-# Add the directory containing visualization_tools.py to the Python path
-
-visualization_path = os.path.join(os.path.dirname(__file__), "visualization")
-sys.path.append(visualization_path)
-
-# Now import the histogram function
+sys.path.append('../../visualization')  # Add the path to get to visualization_tools.py
 from visualization_tools import histograms
 from visualization_tools import calculate_euclidean_distance
 from visualization_tools import calculate_gradient_norm
-from visualization_tools import calculate_gradient_normv2
 from visualization_tools import write_in_file   
 from visualization_tools import dynamic_histograms
 from visualization_tools import delete_file
 from visualization_tools import is_grad_norm_proportional_to_distance
-
 
 matplotlib.use("TkAgg")
 
@@ -271,10 +263,10 @@ def run_dqn(cfg, logger, trial=None):
         optimizer.zero_grad()
         critic_loss.backward()
         
-    
-        torch.nn.utils.clip_grad_norm_(
+        if (cfg.use_max_grad_norm):
+            torch.nn.utils.clip_grad_norm_(
             q_agent.parameters(), cfg.algorithm.max_grad_norm
-        )
+            )
 
         optimizer.step()
 
@@ -378,16 +370,16 @@ def run_dqn(cfg, logger, trial=None):
     histograms("gradient_norm.txt")
     histograms("loss_values.txt")
 
-    histograms("differences_grad_distances.txt")
-    histograms("facteurs_k.txt")
+    #histograms("differences_grad_distances.txt")
+    #histograms("facteurs_k.txt")
 
 
     dynamic_histograms("distances.txt")
     dynamic_histograms("gradient_norm.txt")
     dynamic_histograms("loss_values.txt")
 
-    dynamic_histograms("differences_grad_distances.txt")
-    dynamic_histograms("facteurs_k.txt")
+    #dynamic_histograms("differences_grad_distances.txt")
+    #dynamic_histograms("facteurs_k.txt")
 
  
     return best_reward
