@@ -1,6 +1,7 @@
 save_best: False
 plot_agents: False
 collect_stats: True
+use_max_grad_norm: False
 
 log_dir: ./tmp
 video_dir: ${log_dir}/videos
