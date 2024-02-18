@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from bbrl import instantiate_class
+import os
 
 
 class Logger:
@@ -11,7 +12,8 @@ class Logger:
     def add_log(self, log_string, log_item, steps):
         if isinstance(log_item, torch.Tensor) and log_item.dim() == 0:
             log_item = log_item.item()
-        self.logger.add_scalar(log_string, log_item, steps)
+        self.logger.add_scalar(log_string, log_item, steps)  
+
 
     # A specific function for RL algorithms having a critic, an actor and an entropy losses
     def log_losses(self, critic_loss, entropy_loss, actor_loss, steps):
@@ -67,3 +69,17 @@ class RewardLoader:
         with open(self.rewards_filename, "rb") as f:
             rewards = np.load(f, allow_pickle=True)
         return steps, rewards
+    
+class VisualizationLogger:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def write_in_file(self, data):
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../visualization", self.filename)
+        with open(file_path, "a") as file:
+            file.write(f"{data}\n")
+
+    def delete_file(self):
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../visualization", self.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
