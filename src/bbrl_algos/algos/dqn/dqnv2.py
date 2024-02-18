@@ -49,6 +49,10 @@ from bbrl_algos.wrappers.env_wrappers import MazeMDPContinuousWrapper
 from bbrl.agents.gymnasium import make_env, ParallelGymAgent
 from functools import partial
 
+sys.path.append('../../models')  # Add the path to get to loggers.py
+from loggers import VisualizationLogger
+
+
 sys.path.append('../../visualization')  # Add the path to get to visualization_tools.py
 from visualization_tools import histograms
 from visualization_tools import calculate_euclidean_distance
@@ -186,14 +190,17 @@ def run_dqn(cfg, logger, trial=None):
     nb_steps = 0
     tmp_steps_eval = 0
 
-    prev_policy = None
+    # delete_file("distances.txt")
+    # delete_file("gradient_norm.txt")
+    # delete_file("loss_values.txt")
+    loss_values_logger = VisualizationLogger("loss_values.txt")
+    loss_values_logger.delete_file()
+    grad_logger = VisualizationLogger("gradient_norm.txt")
+    grad_logger.delete_file()
+    distance_logger = VisualizationLogger("distances.txt")
+    distance_logger.delete_file()
 
-    # Delete the existing txt files that are useful for the visualization
-    delete_file("distances.txt")
-    delete_file("gradient_norm.txt")
-    delete_file("loss_values.txt")
-    delete_file("facteurs_k.txt")
-    delete_file("differences_grad_distances.txt")
+    prev_policy = None
 
     while nb_steps < cfg.algorithm.n_steps:
         # Decay the explorer epsilon
@@ -256,9 +263,9 @@ def run_dqn(cfg, logger, trial=None):
         # Store the loss
         logger.add_log("critic_loss", critic_loss, nb_steps)
 
-        write_in_file("loss_values.txt", critic_loss.item())
-
-
+        #write_in_file("loss_values.txt", critic_loss.item())
+        loss_values_logger = VisualizationLogger("loss_values.txt")
+        loss_values_logger.write_in_file(critic_loss.item())
 
         optimizer.zero_grad()
         critic_loss.backward()
@@ -337,19 +344,18 @@ def run_dqn(cfg, logger, trial=None):
         if prev_policy is not None:
             current_policy = torch.nn.utils.parameters_to_vector(eval_agent.parameters())
             distance = calculate_euclidean_distance(prev_policy, current_policy)
-
-            write_in_file("distances.txt", distance)
-
+            #write_in_file("distances.txt", distance)
+            distance_logger = VisualizationLogger("distances.txt")
+            distance_logger.write_in_file(distance)
             
 
         # Updating the previous policy
         prev_policy = torch.nn.utils.parameters_to_vector(eval_agent.parameters())
 
         grad_norm = calculate_gradient_norm(q_agent)
-        #print("Gradient Norm:", grad_norm)
-
-        write_in_file("gradient_norm.txt", grad_norm)
-
+        #write_in_file("gradient_norm.txt", grad_norm)
+        gradient_norm_logger = VisualizationLogger("gradient_norm.txt")
+        gradient_norm_logger.write_in_file(grad_norm)
 
 
     if cfg.collect_stats:
@@ -360,10 +366,9 @@ def run_dqn(cfg, logger, trial=None):
         fo.flush()
         fo.close()
 
-
     # Testing if the norm of gradients is proportional to the learning rate
     # then stocking the k values in a txt file
-    print(is_grad_norm_proportional_to_distance(cfg)) # VRAI POUR MAX_GRAD_NORM = 1000 et a 0.02 pret
+    #print(is_grad_norm_proportional_to_distance(cfg)) # VRAI POUR MAX_GRAD_NORM = 1000 et a 0.02 pret
 
     # Call the histograms function with the desired file you want to plot
     histograms("distances.txt")
