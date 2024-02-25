@@ -6,6 +6,52 @@ import torch.nn as nn
 import plotly.graph_objects as go
 from datetime import datetime
 
+import copy
+import os
+import sys
+import numpy as np
+from typing import Callable, List
+
+import hydra
+import optuna
+from omegaconf import DictConfig
+
+# %%
+import gymnasium as gym
+from gymnasium import Env
+from gymnasium.wrappers import AutoResetWrapper
+
+# %%
+from bbrl import get_arguments, get_class
+from bbrl.agents import TemporalAgent, Agents, PrintAgent
+from bbrl.workspace import Workspace
+
+from bbrl_algos.models.exploration_agents import EGreedyActionSelector
+from bbrl_algos.models.critics import DiscreteQAgent
+from bbrl_algos.models.loggers import Logger
+from bbrl_algos.models.utils import save_best
+
+from bbrl.visu.plot_critics import plot_discrete_q, plot_critic
+from bbrl_algos.models.hyper_params import launch_optuna
+
+from bbrl.utils.chrono import Chrono
+
+# HYDRA_FULL_ERROR = 1
+import matplotlib
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from bbrl_gymnasium.envs.maze_mdp import MazeMDPEnv
+from bbrl_algos.wrappers.env_wrappers import MazeMDPContinuousWrapper
+from bbrl.agents.gymnasium import make_env, ParallelGymAgent
+from functools import partial
+
+# sys.path.append('../algos/dqn')
+# from dqnv2 import run_dqn
+#from bbrl_algos.algos.dqn.dqnv2 import run_dqn #?????????????????????????
+
+matplotlib.use("TkAgg")
+
 
 """
 def calculate_euclidean_distance(policy1, policy2):
@@ -426,8 +472,8 @@ def is_grad_norm_proportional_to_distance(cfg):
 
     for i in range(len(distance_values)):
         k = distance_values[i] / grad_values[i]
-        write_in_file("facteurs_k.txt", k)
-        write_in_file("differences_grad_distances.txt", abs(k - cfg.optimizer.lr))
+        #write_in_file("facteurs_k.txt", k) A FAIRE A LA MAIN
+        #write_in_file("differences_grad_distances.txt", abs(k - cfg.optimizer.lr)) A FAIRE A LA MAIN CAR JE VEUX SUPPRIMER LE CONTENU DU FICHIER A CHAQUE FOIS
 
 
         if(abs(k - cfg.optimizer.lr) > eps):
@@ -435,4 +481,62 @@ def is_grad_norm_proportional_to_distance(cfg):
             #print(abs(k - cfg.optimizer.lr))
 
     return True
+
+def read_tensor_file():
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Construct the relative path to the file
+    policies_file_path = os.path.join(script_directory, "policies.txt")
+
     
+    with open(policies_file_path, "r") as pol_file:
+
+        pol_data = [float(line.strip()) for line in pol_file.readlines()]
+
+    pol_values = [float(value) for value in pol_data]
+
+    return pol_values
+
+
+def get_best_policy(tensor_list):
+    return np.max(tensor_list) 
+
+
+def run_dqn_3_times(cfg_raw,logger):
+    
+    best_policies = []
+    for i in range(3):
+        #cfg_raw.algorithm.seed.train = i+1
+        cfg_raw.algorithm.seed.train = np.random.randint(1, 35)
+        #print("youpi", cfg_raw.algorithm.seed.train)
+        run_dqn(cfg_raw,logger)
+        tensor_list = read_tensor_file()
+        best_policy = get_best_policy(tensor_list)
+        best_policies.append(best_policy)
+    
+    return best_policies
+
+@hydra.main(
+    config_path="../algos/dqn/configs/",
+    config_name="dqn_cartpole.yaml",
+    #config_name="dqn_lunar_lander.yaml", #cartpole
+)  # , version_base="1.3")
+
+def main(cfg_raw: DictConfig):
+    #histograms("distances.txt")
+    #histograms("gradient_norm.txt")
+    #histograms("loss_values.txt")
+    #histograms("facteurs_k.txt")
+    #histograms("differences_grad_distances.txt")
+    dynamic_histograms("distances.txt")
+    dynamic_histograms("gradient_norm.txt")
+    dynamic_histograms("loss_values.txt")
+    #dynamic_histograms("facteurs_k.txt")
+    #dynamic_histograms("differences_grad_distances.txt")
+    #print(is_grad_norm_proportional_to_distance())
+    #print(read_tensor_file())
+    logger = Logger(cfg_raw)
+    print(run_dqn_3_times(cfg_raw,logger))
+
+if __name__ == "__main__":
+    main()
