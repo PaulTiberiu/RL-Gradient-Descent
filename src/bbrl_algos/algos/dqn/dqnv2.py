@@ -347,6 +347,8 @@ def run_dqn(cfg, logger, trial=None):
             #write_in_file("distances.txt", distance)
             distance_logger = VisualizationLogger("distances.txt")
             distance_logger.write_in_file(distance)
+            policy_logger = VisualizationLogger("policies.txt")
+            policy_logger.write_in_file(current_policy)
             
 
         # Updating the previous policy
