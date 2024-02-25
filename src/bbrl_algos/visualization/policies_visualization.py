@@ -62,7 +62,8 @@ def get_best_3_policies(cfg_raw,logger):
 def main(cfg_raw: DictConfig):
     #print(read_tensor_file())
     logger = Logger(cfg_raw)
-    print(run_dqn_3_times(cfg_raw,logger))
+    get_best_3_policies = get_best_3_policies(cfg_raw,logger)
+    return(get_best_3_policies)
 
 if __name__ == "__main__":
     main()
