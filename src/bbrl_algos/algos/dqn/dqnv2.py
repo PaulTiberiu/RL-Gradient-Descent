@@ -206,6 +206,9 @@ def run_dqn(cfg, logger, trial=None):
     grad_logger.delete_file()
     distance_logger = VisualizationLogger("distances.txt")
     distance_logger.delete_file()
+    policy_logger = VisualizationLogger("policies.txt")
+    policy_logger.delete_file()
+
 
     prev_policy = None
 
