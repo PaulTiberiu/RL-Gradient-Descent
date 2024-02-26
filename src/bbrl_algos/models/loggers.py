@@ -75,9 +75,18 @@ class VisualizationLogger:
         self.filename = filename
 
     def write_in_file(self, data):
-        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../visualization", self.filename)
-        with open(file_path, "a") as file:
-            file.write(f"{data}\n")
+        
+        if(self.filename == "policies.txt"):
+            pol_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../visualization", self.filename)
+
+            with open(pol_file_path, "a") as pol_file:
+                pol_file.write(f"{torch.mean(data).item()}\n")
+
+        else: 
+            file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../visualization", self.filename)
+            with open(file_path, "a") as file:
+                file.write(f"{data}\n")
+
 
     def delete_file(self):
         file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../visualization", self.filename)
