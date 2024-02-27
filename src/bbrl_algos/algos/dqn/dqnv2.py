@@ -201,12 +201,13 @@ def run_dqn(cfg, logger, trial=None):
 
     # 7) Define the visualization loggers
     loss_values_logger = VisualizationLogger("loss_values.txt")
-    loss_values_logger.delete_file()
     grad_logger = VisualizationLogger("gradient_norm.txt")
-    grad_logger.delete_file()
     distance_logger = VisualizationLogger("distances.txt")
-    distance_logger.delete_file()
     policy_logger = VisualizationLogger("policies.txt")
+    
+    loss_values_logger.delete_file()
+    grad_logger.delete_file()
+    distance_logger.delete_file()
     policy_logger.delete_file()
 
 
@@ -353,9 +354,9 @@ def run_dqn(cfg, logger, trial=None):
         if prev_policy is not None:
             current_policy = torch.nn.utils.parameters_to_vector(eval_agent.parameters())
             distance = calculate_euclidean_distance(prev_policy, current_policy)
-            distance_logger = VisualizationLogger("distances.txt")
+            #distance_logger = VisualizationLogger("distances.txt")
             distance_logger.write_in_file(distance)
-            policy_logger = VisualizationLogger("policies.txt")
+            #policy_logger = VisualizationLogger("policies.txt")
             policy_logger.write_in_file(current_policy)
             
 
@@ -363,8 +364,8 @@ def run_dqn(cfg, logger, trial=None):
         prev_policy = torch.nn.utils.parameters_to_vector(eval_agent.parameters())
 
         grad_norm = calculate_gradient_norm(q_agent)
-        gradient_norm_logger = VisualizationLogger("gradient_norm.txt")
-        gradient_norm_logger.write_in_file(grad_norm)
+        #gradient_norm_logger = VisualizationLogger("gradient_norm.txt")
+        grad_logger.write_in_file(grad_norm)
 
 
     if cfg.collect_stats:
