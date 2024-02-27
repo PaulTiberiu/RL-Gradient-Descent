@@ -40,66 +40,7 @@ def calculate_gradient_norm(model):
     # or grad_norm = np.sqrt(sum([torch.norm(p.grad)**2 for p in model.parameters()]))
 
     return total_norm
-
-def write_in_file(filename, data):
-
-    if(filename == "loss_values.txt"):
-        # Path to the visualisation folder
-        #visualization_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "visualization")
-
-        loss_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "loss_values.txt")
-
-        with open(loss_file_path, "a") as loss_file:
-            loss_file.write(f"{data}\n")
-
-    if(filename == "distances.txt"):
-        # Path to the visualisation folder
-        #visualization_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "text_files")
-
-        distances_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "distances.txt")
-
-
-        with open(distances_file_path, "a") as distances_file:
-            distances_file.write(f"{data}\n")
-
-    if(filename == "gradient_norm.txt"):
-        # Path to the visualisation folder
-        #visualization_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "visualization")
-
-        gradient_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gradient_norm.txt")
-
-        with open(gradient_file_path, "a") as gradient_file:
-            gradient_file.write(f"{data}\n")
-
-    if(filename == "facteurs_k.txt"):
-        # Path to the visualisation folder
-        #visualization_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "visualization")
-
-        k_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "facteurs_k.txt")
-
-        with open(k_file_path, "a") as k_file:
-            k_file.write(f"{data}\n")
-
-    if(filename == "differences_grad_distances.txt"):
-        # Path to the visualisation folder
-        #visualization_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "visualization")
-
-        diff_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "differences_grad_distances.txt")
-
-        with open(diff_file_path, "a") as diff_file:
-            diff_file.write(f"{data}\n")
-
-    
-
-def delete_file(filename):
-    # Get the absolute path of the file
-    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
-
-    # Check if the file exists
-    if os.path.exists(file_path):
-        # If the file exists, delete it
-        os.remove(file_path)
-    
+   
 
 def is_grad_norm_proportional_to_distance(cfg):
     
