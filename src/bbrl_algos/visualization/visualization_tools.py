@@ -65,7 +65,7 @@ def is_grad_norm_proportional_to_distance(cfg):
         k = distance_values[i] / grad_values[i]
         k_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "facteurs_k.txt")
 
-        with open(k_file_path, "w") as k_file:
+        with open(k_file_path, "a") as k_file:
             k_file.write(f"{k}\n")
 
         diff_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "differences_grad_distances.txt")
