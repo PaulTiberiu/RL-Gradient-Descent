@@ -40,11 +40,11 @@ def calculate_gradient_norm(model):
     # or grad_norm = np.sqrt(sum([torch.norm(p.grad)**2 for p in model.parameters()]))
 
     return total_norm
-   
+    
 
 def is_grad_norm_proportional_to_distance(cfg):
     
-    eps = 0.02
+    eps = 0.02 # value to change
     script_directory = os.path.dirname(os.path.abspath(__file__))
 
     distance_file_path = os.path.join(script_directory, "distances.txt")
@@ -63,9 +63,15 @@ def is_grad_norm_proportional_to_distance(cfg):
 
     for i in range(len(distance_values)):
         k = distance_values[i] / grad_values[i]
-        #write_in_file("facteurs_k.txt", k) A FAIRE A LA MAIN
-        #write_in_file("differences_grad_distances.txt", abs(k - cfg.optimizer.lr)) A FAIRE A LA MAIN CAR JE VEUX SUPPRIMER LE CONTENU DU FICHIER A CHAQUE FOIS
+        k_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "facteurs_k.txt")
 
+        with open(k_file_path, "w") as k_file:
+            k_file.write(f"{k}\n")
+
+        diff_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "differences_grad_distances.txt")
+
+        with open(diff_file_path, "a") as diff_file:
+            diff_file.write(f"{abs(k - cfg.optimizer.lr)}\n")
 
         if(abs(k - cfg.optimizer.lr) > eps):
             return False
