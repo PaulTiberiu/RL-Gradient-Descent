@@ -19,39 +19,26 @@ from dqnv2 import run_dqn
 matplotlib.use("TkAgg")
 
 
-def read_tensor_file():
-    script_directory = os.path.dirname(os.path.abspath(__file__))
+def load_best_model(env_name, dirname, fileroot, agent):
+    search_path = os.path.join("..", "algos", "dqn", dirname, env_name)
+    # Assuming only one file will match the pattern
+    file_list = [f for f in os.listdir(search_path) if f.startswith(fileroot)]
+    if not file_list:
+        print("No model file found.")
+        return None
+    filename = os.path.join(search_path, file_list[0])
+    return agent.load_model(filename + ".agt")
 
-    # Construct the relative path to the file
-    policies_file_path = os.path.join(script_directory, "policies.txt")
-
-    
-    with open(policies_file_path, "r") as pol_file:
-
-        pol_data = [float(line.strip()) for line in pol_file.readlines()]
-
-    pol_values = [float(value) for value in pol_data]
-
-    return pol_values
-
-
-def get_best_policy(tensor_list):
-    return np.max(tensor_list) 
-
-
-def get_best_3_policies(cfg_raw,logger):
-    
+def get_best_3_policies(cfg_raw,logger,agent):
     best_policies = []
-    for i in range(3):
-        #cfg_raw.algorithm.seed.train = i+1
+    for _ in range(3):
         cfg_raw.algorithm.seed.train = np.random.randint(1, 35) # better for random seed
-        #print("youpi", cfg_raw.algorithm.seed.train)
         run_dqn(cfg_raw,logger)
-        tensor_list = read_tensor_file()
-        best_policy = get_best_policy(tensor_list)
-        best_policies.append(best_policy)
-    
+        best = load_best_model(cfg_raw.env.name, cfg_raw.algorithm.dirname, cfg_raw.algorithm.fileroot, agent)
+        best_policies.append(best)
     return best_policies
+
+
 
 @hydra.main(
     config_path="../algos/dqn/configs/",
@@ -62,8 +49,12 @@ def get_best_3_policies(cfg_raw,logger):
 def main(cfg_raw: DictConfig):
     #print(read_tensor_file())
     logger = Logger(cfg_raw)
-    policies = get_best_3_policies(cfg_raw,logger)
-    print(policies)
+
+    # Where can i load this in order to get the best policy?
+    # Does it have to be in the dqnv2 file?
+    print(load_best_model(cfg_raw.env.name, cfg_raw.algorithm.dirname, cfg_raw.algorithm.fileroot, eval_agent))
+    #policies = get_best_3_policies(cfg_raw,logger)
+    #print(policies)
 
 if __name__ == "__main__":
     main()
