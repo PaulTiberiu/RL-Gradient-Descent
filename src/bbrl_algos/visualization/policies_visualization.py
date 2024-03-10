@@ -1,25 +1,13 @@
-import numpy as np
 import os
-import torch
-import torch.nn as nn
-import sys
 import re
 import shutil
-from datetime import datetime
 
 import hydra
 from omegaconf import DictConfig
 
 from bbrl_algos.models.loggers import Logger
+from bbrl.agents import Agent
 
-# HYDRA_FULL_ERROR = 1
-import matplotlib
-import matplotlib.pyplot as plt
-
-sys.path.append('../algos/dqn')
-from dqnv2 import run_dqn
-
-matplotlib.use("TkAgg")
 
 
 def extract_number_from_filename(filename):
@@ -45,17 +33,17 @@ def get_last_chronological_folder(source_dir):
     return folders[0] if folders else None
 
 
-def get_best_model(date, time):
+def get_best_policy(date, time):
     """
-    Stocker les 3 meilleures politiques dans un fichier
+    Stocker la meilleure politique dans un fichier
     """
     # Path to the directory containing the best agents
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    source_dir = os.path.join(script_directory, "tmp", "hydra", date, time, "dqn_best_agents")
+    source_dir = os.path.join(script_directory, "..", "algos", "dqn", "tmp", "hydra", date, time, "dqn_best_agents")
     print(source_dir)
     
     # Path to the destination directory in the visualization folder
-    destination_dir = os.path.join(script_directory, "tmp","dqn_best_agents")
+    destination_dir = os.path.join(script_directory, "dqn_best_agents")
     
     # Create the destination directory if it doesn't exist
     os.makedirs(destination_dir, exist_ok=True)
@@ -84,25 +72,26 @@ def get_best_model(date, time):
     # print("File with max value copied successfully to:", destination_dir)
 
 
-def get_best_3_policies(cfg_raw, logger):
+def load_best_agent(agent):
+    """
+    Load all the best agents in the dqn_best_agents folder using agent.load_model and store them in a list
+    """
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    source_dir = os.path.join(script_directory, "dqn_best_agents")
 
-    for _ in range(3):
-        cfg_raw.algorithm.seed.train = np.random.randint(1, 35) # seeds between 1 and 35 
-        print(cfg_raw.algorithm.seed.train)
-        run_dqn(cfg_raw,logger)
+    # Get a list of files in the dqn_best_agents folder
+    agt_files = [f for f in os.listdir(source_dir) if f.endswith(".agt")]
 
-        current_datetime = datetime.now()
-        current_date = current_datetime.strftime("%Y-%m-%d")
-
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        source_dir = os.path.join(script_directory, "tmp", "hydra", current_date)
-
-        current_time = get_last_chronological_folder(source_dir)
-        get_best_model(current_date, current_time)
-
-
-#def load_best_models(agent):
-
+    # List to store the loaded agents
+    loaded_agents = []
+    
+    # Iterate over each file and load the agent using agent.load_model
+    for file in agt_files:
+        file_path = os.path.join(source_dir, file)  # Full path to the agent file
+        loaded_agent = agent.load_model(file_path)
+        loaded_agents.append(loaded_agent)
+    
+    return loaded_agents
 
 @hydra.main(
     config_path="../algos/dqn/configs/",
@@ -113,8 +102,22 @@ def get_best_3_policies(cfg_raw, logger):
 def main(cfg_raw: DictConfig):
     #print(read_tensor_file())
 
-    logger = Logger(cfg_raw)
-    #get_best_3_policies(cfg_raw, logger)
+    # date = "2024-03-10" 
+    # time = "10-44-08"
+    # get_best_policy(date, time)
+
+    # date = "2024-03-10" 
+    # time = "10-49-00"
+    # get_best_policy(date, time)
+
+    # date = "2024-03-10" 
+    # time = "10-53-36"
+    # get_best_policy(date, time)
+
+    agent = Agent()
+    print(load_best_agent(agent))
+
 
 if __name__ == "__main__":
     main()
+
