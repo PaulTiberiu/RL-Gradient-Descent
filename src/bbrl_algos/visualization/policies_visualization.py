@@ -4,9 +4,14 @@ import shutil
 
 import hydra
 from omegaconf import DictConfig
+import torch
+import torch.nn as nn
+
 
 from bbrl_algos.models.loggers import Logger
-from bbrl.agents import Agent
+from bbrl.agents import Agent, TemporalAgent, Agents
+from bbrl_algos.algos.dqn.dqn import local_get_env_agents
+from bbrl.workspace import Workspace
 
 
 
@@ -93,6 +98,38 @@ def load_best_agent(agent):
     
     return loaded_agents
 
+
+def load_policies(loaded_agents):
+    list_policies = []
+    for i in range (len(loaded_agents)):
+        policy = torch.nn.utils.parameters_to_vector(loaded_agents[i].parameters())
+        list_policies.append(policy)
+    return list_policies
+
+# def load_rewards(loaded_agents):
+#     list_rewards = []
+#     print(len(loaded_agents))
+#     for i in range (len(loaded_agents)):
+#         #discrete_agent = loaded_agents[i].agent[1]
+#         #eval_agent(workspace, t=0, stop_variable="env/done", render=False)
+#         #train_agent = TemporalAgent(Agents(mon_env, discrete_agent))
+#         #policy = torch.nn.utils.vector_to_parameters(loaded_agents[i].parameters())
+
+#         print(loaded_agents[i])
+#         workspace = Workspace()
+
+#         eval_agent = TemporalAgent(loaded_agents[i])
+#         #print(eval_agent)
+
+#         eval_agent(workspace, t=0, stop_variable="env/done",choose_action=True)
+
+#         print("voila")
+#         rewards = workspace["env/cumulated_reward"][-1]
+#         mean = rewards.mean()
+#         list_rewards.append(mean)
+
+#     return list_rewards
+
 @hydra.main(
     config_path="../algos/dqn/configs/",
     config_name="dqn_cartpole.yaml",
@@ -102,20 +139,30 @@ def load_best_agent(agent):
 def main(cfg_raw: DictConfig):
     #print(read_tensor_file())
 
-    # date = "2024-03-10" 
-    # time = "10-44-08"
-    # get_best_policy(date, time)
+    date = "2024-03-10" 
+    time = "10-44-08"
+    get_best_policy(date, time)
 
-    # date = "2024-03-10" 
-    # time = "10-49-00"
-    # get_best_policy(date, time)
+    date = "2024-03-10" 
+    time = "10-49-00"
+    get_best_policy(date, time)
 
-    # date = "2024-03-10" 
-    # time = "10-53-36"
-    # get_best_policy(date, time)
+    date = "2024-03-10" 
+    time = "10-53-36"
+    get_best_policy(date, time)
 
     agent = Agent()
-    print(load_best_agent(agent))
+    loaded_agents = load_best_agent(agent)
+    #print(loaded_agents)
+
+    list_policies = load_policies(loaded_agents)
+    i=0
+    for i in range(len(list_policies)):
+        print(list_policies[i])
+        print("")
+
+    # list_rewards = load_rewards(loaded_agents)
+    # print(list_rewards)
 
 
 if __name__ == "__main__":
