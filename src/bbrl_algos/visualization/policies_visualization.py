@@ -7,12 +7,17 @@ from omegaconf import DictConfig
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+
 import numpy as np
+import gym
 
 
 from bbrl_algos.models.loggers import Logger
 from bbrl.agents import Agent, TemporalAgent, Agents
 from bbrl_algos.algos.dqn.dqn import local_get_env_agents
+from bbrl_algos.models.critics import DiscreteQAgent
 from bbrl.workspace import Workspace
 
 
@@ -47,7 +52,7 @@ def get_best_policy(date, time):
     # Path to the directory containing the best agents
     script_directory = os.path.dirname(os.path.abspath(__file__))
     source_dir = os.path.join(script_directory, "..", "algos", "dqn", "tmp", "hydra", date, time, "dqn_best_agents")
-    print(source_dir)
+    #print(source_dir)
     
     # Path to the destination directory in the visualization folder
     destination_dir = os.path.join(script_directory, "dqn_best_agents")
@@ -79,7 +84,7 @@ def get_best_policy(date, time):
     # print("File with max value copied successfully to:", destination_dir)
 
 
-def load_best_agent(agent):
+def load_best_agent():
     """
     Load all the best agents in the dqn_best_agents folder using agent.load_model and store them in a list
     """
@@ -91,6 +96,8 @@ def load_best_agent(agent):
 
     # List to store the loaded agents
     loaded_agents = []
+
+    agent = Agent()
     
     # Iterate over each file and load the agent using agent.load_model
     for file in agt_files:
@@ -108,16 +115,15 @@ def load_policies(loaded_agents):
         list_policies.append(policy)
     return list_policies
 
-import matplotlib.pyplot as plt
-import numpy as np
 
-def plot_triangle_with_new_point(policies, coefficients):
+def plot_triangle_with_new_point(coefficients, new_policy_reward):
     """
     Plot a triangle with vertices representing policies and a new point calculated as a weighted sum of policies.
+    Color the new point based on its reward value.
 
     Parameters:
-    - policies (list of torch.Tensor): List of policy tensors representing vertices of the triangle.
     - coefficients (list of float): List of coefficients (a1, a2, a3) used to calculate the new point.
+    - new_policy_reward (float): Reward value for the new policy.
     """
 
     # Generate the vertices of the equilateral triangle
@@ -127,28 +133,88 @@ def plot_triangle_with_new_point(policies, coefficients):
     plt.plot(triangle_vertices[:, 0], triangle_vertices[:, 1], 'k-')
 
     # Plot policy vertices
-    plt.plot(triangle_vertices[:3, 0], triangle_vertices[:3, 1], 'ro')
-    plt.text(triangle_vertices[0, 0] - 0.05, triangle_vertices[0, 1] - 0.05, 'p1', fontsize=12)
-    plt.text(triangle_vertices[1, 0] + 0.05, triangle_vertices[1, 1] - 0.05, 'p2', fontsize=12)
-    plt.text(triangle_vertices[2, 0], triangle_vertices[2, 1] + 0.05, 'p3', fontsize=12)
+    #plt.plot(triangle_vertices[:3, 0], triangle_vertices[:3, 1], 'ko')  # Black circles
+    plt.text(triangle_vertices[0, 0] - 0.05, triangle_vertices[0, 1] - 0.03, 'p1', fontsize=10)
+    plt.text(triangle_vertices[1, 0] + 0.05, triangle_vertices[1, 1] - 0.03, 'p2', fontsize=10)
+    plt.text(triangle_vertices[2, 0], triangle_vertices[2, 1] + 0.03, 'p3', fontsize=10)
 
     # Calculate the coordinates of the new point
     new_point = np.dot(np.array(coefficients), triangle_vertices[:3])
 
-    # Plot the new point representing the weighted sum of policies
-    plt.plot(new_point[0], new_point[1], 'bo')
+    # Normalize the reward value to range from 0 to 1
+    norm = mcolors.Normalize(vmin=0, vmax=500)
+
+    # Choose a colormap that covers the entire range from 0 to 500
+    cmap = plt.get_cmap('coolwarm')
+
+    # Plot the new point representing the weighted sum of policies, with color based on its reward
+    plt.scatter(new_point[0], new_point[1], c=new_policy_reward, cmap=cmap, norm=norm, s=50)
 
     # Set axis limits and labels
     plt.xlim(-0.1, 1.1)
     plt.ylim(-0.1, np.sqrt(3)/2 + 0.1)
-    plt.xlabel('Policy Parameters')
-    plt.ylabel('Performance')
+
+    # Add color bar legend
+    cbar = plt.colorbar(cm.ScalarMappable(cmap=cmap, norm=norm))
+    cbar.set_label('Reward')
 
     # Add legend
     plt.legend(['Triangle Edges', 'Policy Vertices', 'New Point'])
 
     # Show the plot
     plt.show()
+
+def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
+    """
+    Plot a triangle with vertices representing policies and a new point calculated as a weighted sum of policies.
+    Color the new point based on its reward value.
+
+    Parameters:
+    - coefficients (list of float): List of coefficients (a1, a2, a3) used to calculate the new point.
+    - new_policy_reward (float): Reward value for the new policy.
+    """
+
+    # Generate the vertices of the equilateral triangle
+    triangle_vertices = np.array([[0, 0], [1, 0], [0.5, np.sqrt(3)/2], [0, 0]])
+
+    # Plot the triangle edges
+    plt.plot(triangle_vertices[:, 0], triangle_vertices[:, 1], 'k-')
+
+    # Plot policy vertices
+    #plt.plot(triangle_vertices[:3, 0], triangle_vertices[:3, 1], 'ko')  # Black circles
+    plt.text(triangle_vertices[0, 0] - 0.05, triangle_vertices[0, 1] - 0.03, 'p1', fontsize=10)
+    plt.text(triangle_vertices[1, 0] + 0.05, triangle_vertices[1, 1] - 0.03, 'p2', fontsize=10)
+    plt.text(triangle_vertices[2, 0], triangle_vertices[2, 1] + 0.03, 'p3', fontsize=10)
+
+
+    # Normalize the reward value to range from 0 to 1
+    norm = mcolors.Normalize(vmin=0, vmax=500)
+
+    # Choose a colormap that covers the entire range from 0 to 500
+    cmap = plt.get_cmap('viridis')
+
+    # Calculate the coordinates of the new point
+    for coefs, reward in zip(coefficients_list, rewards_list):
+        new_point = np.dot(np.array(coefs), triangle_vertices[:3])
+        plt.scatter(new_point[0], new_point[1], c=reward, cmap=cmap, norm=norm, s=50)
+
+
+    # Plot the new point representing the weighted sum of policies, with color based on its reward
+
+    # Set axis limits and labels
+    plt.xlim(-0.1, 1.1)
+    plt.ylim(-0.1, np.sqrt(3)/2 + 0.1)
+
+    # Add color bar legend
+    cbar = plt.colorbar(cm.ScalarMappable(cmap=cmap, norm=norm))
+    cbar.set_label('Reward')
+
+    # Add legend
+    plt.legend(['Triangle Edges'])
+
+    # Show the plot
+    plt.show()
+
 
 def update_policy_with_coefficients(list_policies, coefficients):
     """
@@ -168,28 +234,55 @@ def update_policy_with_coefficients(list_policies, coefficients):
 
     return updated_policy
 
-
-
-#Cette fonction nous sert d'avoir la coloration de nos points sur le plot en fonction du reward de la politique
-
-def load_reward(policy):
-    #discrete_agent = loaded_agents[i].agent[1]
-    #eval_agent(workspace, t=0, stop_variable="env/done", render=False)
-    #train_agent = TemporalAgent(Agents(mon_env, discrete_agent))
-    #policy = torch.nn.utils.vector_to_parameters(loaded_agents[i].parameters())
-
+def load_reward(eval_agent):
     workspace = Workspace()
-
-    eval_agent = TemporalAgent(policy)
-    #print(eval_agent)
 
     eval_agent(workspace, t=0, stop_variable="env/done",choose_action=True)
 
-    print("voila")
     rewards = workspace["env/cumulated_reward"][-1]
     mean_reward = rewards.mean()
 
     return mean_reward
+
+def get_policy_reward(coefficients, loaded_agents):
+    rewards = []
+
+    for i in range(len(loaded_agents)):
+        rewards.append(load_reward(loaded_agents[i]))
+        
+    new_policy_reward = 0
+    if(len(coefficients) == len(rewards)):
+        for j in range(len(coefficients)):
+            new_policy_reward += coefficients[j] * rewards[j]
+
+    return new_policy_reward
+
+
+def generate_coefficients_list(num_points):
+
+    # Generate random coefficients for each point
+    coefficients_list = []
+    for _ in range(num_points):
+        coefficients = np.random.dirichlet(np.ones(3), size=1).flatten()
+        coefficients_list.append(coefficients.tolist())
+
+    return coefficients_list
+
+def save_policy_and_get_agent(policy):
+    # Save the policy tensor to the specified file
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    source_dir = os.path.join(script_directory, "Cartpole-v1.agt")
+    torch.save(policy, source_dir)
+
+    #print(source_dir)
+
+    # Initialize a new agent instance
+    new_agent = Agent()
+
+    # Load the policy tensor from the file into the agent
+    new_agent.load_model(source_dir)
+
+    return new_agent
 
 
 @hydra.main(
@@ -213,24 +306,32 @@ def main(cfg_raw: DictConfig):
     time = "10-53-36"
     get_best_policy(date, time)
 
-    agent = Agent()
-    loaded_agents = load_best_agent(agent)
+    loaded_agents = load_best_agent()
     #print(loaded_agents)
 
     list_policies = load_policies(loaded_agents)
-    p1 = list_policies[0]
-    p2 = list_policies[1]
-    p3 = list_policies[2]
 
-    coefficients = [0, 0.4, 0.6]  # Example coefficients
-    new_policy = update_policy_with_coefficients(list_policies, coefficients)
-    print(new_policy)
 
-    plot_triangle_with_new_point([p1, p2, p3], coefficients)
+    coefficients = [0, 0, 1]
+    new_policy_reward = get_policy_reward(coefficients, loaded_agents)
+    print(new_policy_reward)
 
-    #reward = load_reward(new_policy)
-    #print(reward)
+    #plot_triangle_with_new_point(coefficients, new_policy_reward)
+    #coefficients_list = [[0, 0, 1], [0, 1, 0], [1, 0, 0],[0.3, 0.5, 0.2]]
 
+    coefficients_list = generate_coefficients_list(500)
+    #print(coefficients_list)
+
+    rewards_list = [get_policy_reward(coeff, loaded_agents) for coeff in coefficients_list]
+    plot_triangle_with_multiple_points(coefficients_list, rewards_list)
+
+
+    #new_policy = update_policy_with_coefficients(list_policies, coefficients)
+    #print(new_policy)
+
+
+    # new_agent = save_policy_and_get_agent(new_policy)
+    # print(new_agent)
 
 
 
