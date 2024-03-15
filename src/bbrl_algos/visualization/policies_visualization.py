@@ -12,6 +12,8 @@ import matplotlib.colors as mcolors
 
 import numpy as np
 import gym
+from datetime import datetime
+
 
 
 from bbrl_algos.models.loggers import Logger
@@ -116,62 +118,14 @@ def load_policies(loaded_agents):
     return list_policies
 
 
-def plot_triangle_with_new_point(coefficients, new_policy_reward):
-    """
-    Plot a triangle with vertices representing policies and a new point calculated as a weighted sum of policies.
-    Color the new point based on its reward value.
-
-    Parameters:
-    - coefficients (list of float): List of coefficients (a1, a2, a3) used to calculate the new point.
-    - new_policy_reward (float): Reward value for the new policy.
-    """
-
-    # Generate the vertices of the equilateral triangle
-    triangle_vertices = np.array([[0, 0], [1, 0], [0.5, np.sqrt(3)/2], [0, 0]])
-
-    # Plot the triangle edges
-    plt.plot(triangle_vertices[:, 0], triangle_vertices[:, 1], 'k-')
-
-    # Plot policy vertices
-    #plt.plot(triangle_vertices[:3, 0], triangle_vertices[:3, 1], 'ko')  # Black circles
-    plt.text(triangle_vertices[0, 0] - 0.05, triangle_vertices[0, 1] - 0.03, 'p1', fontsize=10)
-    plt.text(triangle_vertices[1, 0] + 0.05, triangle_vertices[1, 1] - 0.03, 'p2', fontsize=10)
-    plt.text(triangle_vertices[2, 0], triangle_vertices[2, 1] + 0.03, 'p3', fontsize=10)
-
-    # Calculate the coordinates of the new point
-    new_point = np.dot(np.array(coefficients), triangle_vertices[:3])
-
-    # Normalize the reward value to range from 0 to 1
-    norm = mcolors.Normalize(vmin=0, vmax=500)
-
-    # Choose a colormap that covers the entire range from 0 to 500
-    cmap = plt.get_cmap('coolwarm')
-
-    # Plot the new point representing the weighted sum of policies, with color based on its reward
-    plt.scatter(new_point[0], new_point[1], c=new_policy_reward, cmap=cmap, norm=norm, s=50)
-
-    # Set axis limits and labels
-    plt.xlim(-0.1, 1.1)
-    plt.ylim(-0.1, np.sqrt(3)/2 + 0.1)
-
-    # Add color bar legend
-    cbar = plt.colorbar(cm.ScalarMappable(cmap=cmap, norm=norm))
-    cbar.set_label('Reward')
-
-    # Add legend
-    plt.legend(['Triangle Edges', 'Policy Vertices', 'New Point'])
-
-    # Show the plot
-    plt.show()
-
 def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
     """
     Plot a triangle with vertices representing policies and a new point calculated as a weighted sum of policies.
     Color the new point based on its reward value.
 
     Parameters:
-    - coefficients (list of float): List of coefficients (a1, a2, a3) used to calculate the new point.
-    - new_policy_reward (float): Reward value for the new policy.
+    - coefficients_list (list of lists): List of coefficients (a1, a2, a3) used to calculate the new point.
+    - rewards_list (list of float): List of reward values for each point.
     """
 
     # Generate the vertices of the equilateral triangle
@@ -181,25 +135,21 @@ def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
     plt.plot(triangle_vertices[:, 0], triangle_vertices[:, 1], 'k-')
 
     # Plot policy vertices
-    #plt.plot(triangle_vertices[:3, 0], triangle_vertices[:3, 1], 'ko')  # Black circles
     plt.text(triangle_vertices[0, 0] - 0.05, triangle_vertices[0, 1] - 0.03, 'p1', fontsize=10)
     plt.text(triangle_vertices[1, 0] + 0.05, triangle_vertices[1, 1] - 0.03, 'p2', fontsize=10)
     plt.text(triangle_vertices[2, 0], triangle_vertices[2, 1] + 0.03, 'p3', fontsize=10)
 
+    #norm = mcolors.Normalize(vmin=0, vmax=500) #TO TO HAVE THE VALUES FROM 0 TO 500
+    norm = mcolors.Normalize(vmin=min(rewards_list), vmax=max(rewards_list))
 
-    # Normalize the reward value to range from 0 to 1
-    norm = mcolors.Normalize(vmin=0, vmax=500)
+    # Choose a colormap that covers the entire range of rewards
+    cmap = plt.get_cmap('RdBu')
 
-    # Choose a colormap that covers the entire range from 0 to 500
-    cmap = plt.get_cmap('viridis')
-
-    # Calculate the coordinates of the new point
+    # Plot the points with adjusted positions and transparency
     for coefs, reward in zip(coefficients_list, rewards_list):
         new_point = np.dot(np.array(coefs), triangle_vertices[:3])
-        plt.scatter(new_point[0], new_point[1], c=reward, cmap=cmap, norm=norm, s=50)
-
-
-    # Plot the new point representing the weighted sum of policies, with color based on its reward
+        jitter = np.random.normal(0, 0.01, 2)  # Add a small random jitter to avoid superposition
+        plt.scatter(new_point[0] + jitter[0], new_point[1] + jitter[1], c=reward, cmap=cmap, norm=norm, alpha=0.5, s=250)
 
     # Set axis limits and labels
     plt.xlim(-0.1, 1.1)
@@ -211,6 +161,22 @@ def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
 
     # Add legend
     plt.legend(['Triangle Edges'])
+
+
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
+
+    save_directory = os.path.join(script_directory, "..", "..","..", "visualization_results")
+    if not os.path.exists(save_directory):
+        os.makedirs(save_directory)
+
+    now = datetime.now()
+    date_time = now.strftime("%Y-%m-%d_%H-%M-%S")
+
+    # Then save the plot using the save_directory
+    save_path = os.path.join(save_directory, f"policy_{date_time}.png")
+
+    plt.savefig(save_path)
 
     # Show the plot
     plt.show()
@@ -258,6 +224,28 @@ def get_policy_reward(coefficients, loaded_agents):
     return new_policy_reward
 
 
+def generate_coefficients_left_bound_triangle(num_points):
+
+    # Generate random barycentric coordinates for each point
+    r1 = np.random.uniform(0, 1, num_points)
+    r2 = np.random.uniform(0, 1, num_points)
+    is_inside_triangle = r1 + r2 <= 1
+
+    # Keep generating until all points are inside the triangle
+    while not np.all(is_inside_triangle):
+        r1[~is_inside_triangle] = np.random.uniform(0, 1, np.sum(~is_inside_triangle))
+        r2[~is_inside_triangle] = np.random.uniform(0, 1, np.sum(~is_inside_triangle))
+        is_inside_triangle = r1 + r2 <= 1
+
+    r1 = r1[is_inside_triangle]
+    r2 = r2[is_inside_triangle]
+    r3 = 1 - r1 - r2
+
+    # Combine barycentric coordinates into coefficients
+    coefficients_list = np.column_stack((r1, r2, r3)).tolist()
+
+    return coefficients_list
+
 def generate_coefficients_list(num_points):
 
     # Generate random coefficients for each point
@@ -267,6 +255,7 @@ def generate_coefficients_list(num_points):
         coefficients_list.append(coefficients.tolist())
 
     return coefficients_list
+
 
 def save_policy_and_get_agent(policy):
     # Save the policy tensor to the specified file
@@ -316,20 +305,20 @@ def main(cfg_raw: DictConfig):
     new_policy_reward = get_policy_reward(coefficients, loaded_agents)
     print(new_policy_reward)
 
-    #plot_triangle_with_new_point(coefficients, new_policy_reward)
-    #coefficients_list = [[0, 0, 1], [0, 1, 0], [1, 0, 0],[0.3, 0.5, 0.2]]
 
-    coefficients_list = generate_coefficients_list(500)
-    #print(coefficients_list)
+    coefficients_list = generate_coefficients_list(400)
+    rewards_list = []
+    cpt=0
+    for coeff in coefficients_list:
+        rewards_list.append(get_policy_reward(coeff, loaded_agents))
+        cpt+=1
+        print(cpt)
 
-    rewards_list = [get_policy_reward(coeff, loaded_agents) for coeff in coefficients_list]
     plot_triangle_with_multiple_points(coefficients_list, rewards_list)
 
 
     #new_policy = update_policy_with_coefficients(list_policies, coefficients)
     #print(new_policy)
-
-
     # new_agent = save_policy_and_get_agent(new_policy)
     # print(new_agent)
 
