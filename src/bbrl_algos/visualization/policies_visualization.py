@@ -153,7 +153,7 @@ def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
         new_point = np.dot(np.array(coefs), triangle_vertices[:3])
         #jitter = np.random.normal(0, 0.01, 2)  # Add a small random jitter to avoid superposition
         #plt.scatter(new_point[0] + jitter[0], new_point[1] + jitter[1], c=reward, cmap=cmap, norm=norm, alpha=0.5, s=250)
-        plt.scatter(new_point[0], new_point[1], c=reward, cmap=cmap, norm=norm, s=100)
+        plt.scatter(new_point[0], new_point[1], c=reward, cmap=cmap, norm=norm, s=80)
     # Set axis limits and labels
     plt.xlim(-0.1, 1.1)
     plt.ylim(-0.1, np.sqrt(3)/2 + 0.1)
@@ -286,55 +286,28 @@ def update_policy_with_coefficients(list_policies, coefficients):
 
     return updated_policy
 
-def load_reward(eval_agent):
+def create_new_DQN_agent_and_evaluate(cfg, env_agent, theta):
+
+    # Create the agent
+    obs_size, act_size = env_agent.get_obs_and_actions_sizes()
+    policy = globals()["DiscreteQAgent"](
+        obs_size, cfg.algorithm.architecture.hidden_sizes, act_size
+    )
+    ev_agent = Agents(env_agent, policy)
+    eval_agent = TemporalAgent(ev_agent)
+
+    # Calculate the reward
+    torch.nn.utils.vector_to_parameters(theta, eval_agent.parameters())
+
     workspace = Workspace()
 
-    eval_agent(workspace, t=0, stop_variable="env/done",choose_action=True)
+    eval_agent(workspace, t=0, stop_variable="env/done", render=False)
 
     rewards = workspace["env/cumulated_reward"][-1]
     mean_reward = rewards.mean()
 
     return mean_reward
 
-def get_policy_reward(coefficients, loaded_agents):
-    rewards = []
-
-    for i in range(len(loaded_agents)):
-        rewards.append(load_reward(loaded_agents[i]))
-        
-    new_policy_reward = 0
-    if(len(coefficients) == len(rewards)):
-        for j in range(len(coefficients)):
-            new_policy_reward += coefficients[j] * rewards[j]
-
-    return new_policy_reward
-
-def generate_coefficients_list(num_points):
-
-    # Generate random coefficients for each point
-    coefficients_list = []
-    for _ in range(num_points):
-        coefficients = np.random.dirichlet(np.ones(3), size=1).flatten()
-        coefficients_list.append(coefficients.tolist())
-
-    return coefficients_list
-
-
-def save_policy_and_get_agent(policy):
-    # Save the policy tensor to the specified file
-    script_directory = os.path.dirname(os.path.abspath(__file__))
-    source_dir = os.path.join(script_directory, "Cartpole-v1.agt")
-    torch.save(policy, source_dir)
-
-    #print(source_dir)
-
-    # Initialize a new agent instance
-    new_agent = Agent()
-
-    # Load the policy tensor from the file into the agent
-    new_agent.load_model(source_dir)
-
-    return new_agent
 
 def intersection_point(m, b, x_coord):
     "Calculates the intersection point of an y = mx'+b axis with the x = x_coord axis"
@@ -410,7 +383,7 @@ def is_inside_triangle(point, A, B, C):
 
     return ((b1 == b2) and (b2 == b3))
 
-def policies_visualization(num_points, loaded_agents):
+def policies_visualization(cfg, env_agent, num_points, loaded_agents):
 
     #1. Calculating alphas
 
@@ -466,15 +439,19 @@ def policies_visualization(num_points, loaded_agents):
     #2. Calculating rewards
     rewards_list = []
     cpt=0
+    print(len(alphas))
     for alpha in alphas:
-        rewards_list.append(get_policy_reward(alpha, loaded_agents))
+        #print(alpha)
+        theta = update_policy_with_coefficients(loaded_agents, alpha) # a1P1+a2P2+a3P3
+        rewards_list.append(create_new_DQN_agent_and_evaluate(cfg, env_agent, theta))
         cpt+=1
         print(cpt)
+
 
     #3. Plotting the triangle with the points
     plot_triangle_with_multiple_points_plotly(alphas, rewards_list)
     plot_triangle_with_multiple_points(alphas, rewards_list)
-    
+
 
 
 @hydra.main(
@@ -499,8 +476,16 @@ def main(cfg_raw: DictConfig):
     get_best_policy(date, time)
 
     loaded_agents = load_best_agent()
-    #print(loaded_agents)
-    policies_visualization(40, loaded_agents)
+
+    new_theta = update_policy_with_coefficients(load_policies(loaded_agents), [0.5, 0.3, 0.2])
+    print(new_theta)
+
+    _, eval_env_agent = local_get_env_agents(cfg_raw)
+    
+    #reward = create_new_DQN_agent_and_evaluate(cfg_raw, eval_env_agent, new_theta) 
+    #print(reward)
+
+    policies_visualization(cfg_raw, eval_env_agent, 80, load_policies(loaded_agents))
 
 
 
