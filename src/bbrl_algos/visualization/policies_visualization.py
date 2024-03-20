@@ -49,14 +49,13 @@ def get_last_chronological_folder(source_dir):
     return folders[0] if folders else None
 
 
-def get_best_policy(date, time):
+def get_best_policy(date, time, suffix):
     """
     Stocker la meilleure politique dans un fichier
     """
     # Path to the directory containing the best agents
     script_directory = os.path.dirname(os.path.abspath(__file__))
     source_dir = os.path.join(script_directory, "..", "algos", "dqn", "tmp", "hydra", date, time, "dqn_best_agents")
-    #print(source_dir)
     
     # Path to the destination directory in the visualization folder
     destination_dir = os.path.join(script_directory, "dqn_best_agents")
@@ -66,11 +65,10 @@ def get_best_policy(date, time):
     
     # Get a list of folders in chronological order
     agt_files = [f for f in os.listdir(source_dir) if f.endswith(".agt")]
-    #print(agt_files)
     
     # Extract the values from each folder and append them to an array
     values_array = [extract_number_from_filename(agt_file) for agt_file in agt_files]
-    #print(values_array)    
+    
     # Find the index of the folder with the maximum value
     max_index = values_array.index(max(values_array))
     
@@ -79,13 +77,18 @@ def get_best_policy(date, time):
     
     # Copy the files from the folder with the max value to the destination directory
     source_file = os.path.join(source_dir, max_value_agt_file)
-    destination_file = os.path.join(destination_dir, max_value_agt_file)
+    
+    # Modify the destination file name to include the suffix
+    base_name, extension = os.path.splitext(max_value_agt_file)
+    destination_file = os.path.join(destination_dir, f"{base_name}_{suffix}{extension}")
+    
     shutil.copyfile(source_file, destination_file)
     
     # Print the results
     # print("Values array:", values_array)
     # print("File with max value:", max_value_agt_file)
     # print("File with max value copied successfully to:", destination_dir)
+
 
 
 def load_best_agent():
@@ -145,7 +148,7 @@ def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
     norm = mcolors.Normalize(vmin=min(rewards_list), vmax=max(rewards_list))
 
     # Choose a colormap that covers the entire range of rewards
-    cmap = plt.get_cmap('RdBu')
+    cmap = plt.get_cmap('RdBu_r')
     #cmap = plt.get_cmap('viridis')
 
     # Plot the points with adjusted positions and transparency
@@ -153,7 +156,7 @@ def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
         new_point = np.dot(np.array(coefs), triangle_vertices[:3])
         #jitter = np.random.normal(0, 0.01, 2)  # Add a small random jitter to avoid superposition
         #plt.scatter(new_point[0] + jitter[0], new_point[1] + jitter[1], c=reward, cmap=cmap, norm=norm, alpha=0.5, s=250)
-        plt.scatter(new_point[0], new_point[1], c=reward, cmap=cmap, norm=norm, s=80)
+        plt.scatter(new_point[0], new_point[1], c=reward, cmap=cmap, norm=norm, s=60)
     # Set axis limits and labels
     plt.xlim(-0.1, 1.1)
     plt.ylim(-0.1, np.sqrt(3)/2 + 0.1)
@@ -244,7 +247,7 @@ def plot_triangle_with_multiple_points_plotly(coefficients_list, rewards_list):
                     tickvals=[min_reward, max_reward],
                     ticktext=[f'{min_reward:.2f}', f'{max_reward:.2f}']
                 ),
-                colorscale='RdBu',  # Use the built-in Red-Blue color scale
+                colorscale='RdBu_r',  # Use the built-in Red-Blue color scale
                 cmin=min_reward,  # Explicitly set the min for color scaling
                 cmax=max_reward,  # Explicitly set the max for color scaling
                 showscale=True  # Ensure that the colorscale is shown
@@ -463,22 +466,22 @@ def policies_visualization(cfg, env_agent, num_points, loaded_agents):
 def main(cfg_raw: DictConfig):
     #print(read_tensor_file())
 
-    date = "2024-03-10" 
-    time = "10-44-08"
-    get_best_policy(date, time)
+    date = "2024-03-20" 
+    time = "12-11-42"
+    get_best_policy(date, time, 1)
 
-    date = "2024-03-10" 
-    time = "10-49-00"
-    get_best_policy(date, time)
+    date = "2024-03-20" 
+    time = "12-14-28"
+    get_best_policy(date, time, 2)
 
-    date = "2024-03-10" 
-    time = "10-53-36"
-    get_best_policy(date, time)
+    date = "2024-03-20" 
+    time = "12-16-48"
+    get_best_policy(date, time, 3)
 
     loaded_agents = load_best_agent()
 
-    new_theta = update_policy_with_coefficients(load_policies(loaded_agents), [0.5, 0.3, 0.2])
-    print(new_theta)
+    #new_theta = update_policy_with_coefficients(load_policies(loaded_agents), [0.5, 0.3, 0.2])
+    #print(new_theta)
 
     _, eval_env_agent = local_get_env_agents(cfg_raw)
     
@@ -486,7 +489,6 @@ def main(cfg_raw: DictConfig):
     #print(reward)
 
     policies_visualization(cfg_raw, eval_env_agent, 80, load_policies(loaded_agents))
-
 
 
 if __name__ == "__main__":
