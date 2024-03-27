@@ -1,7 +1,15 @@
-# Visualization Tool
+# Visualization Tools for Reinforcement Learning algorithms
+This project was completed for the P-ANDROIDE project during the first year of the Master's program in ANDROIDE computer science at Sorbonne University. Our project showcases two main components:
 
+## Histograms
+In this part, we are focusing on analyzing the loss, the norm of distances between two policies, and the norm of gradients within the framework of the gradient descent algorithm, specifically with the use of the DQN algorithm.
 
+Using the histograms, we will be able to verify certain hypothesis such as proportionalities between, for example, the norm of the gradient is proportional to the distance between two successive policies.
 
+## Policies visualization tool
+This tool will allow us to display the performance of policies within a selected subspace of the policy space.
+
+![policy_2024-03-20_12-44-23](https://github.com/PaulTiberiu/RL-Gradient-Visualization-Tool/assets/123265734/f8a1b8f7-2744-4083-8642-b1cd305200f0)
 
 # BBRL - ALGOS
 
