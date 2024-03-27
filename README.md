@@ -5,9 +5,10 @@ This project was completed for the P-ANDROIDE project during the first year of t
 In this part, we are focusing on analyzing the loss, the norm of distances between two policies, and the norm of gradients within the framework of the gradient descent algorithm, specifically with the use of the DQN algorithm.
 
 Using the histograms, we will be able to verify certain hypothesis such as proportionalities between, for example, the norm of the gradient is proportional to the distance between two successive policies. Examples of histograms (distances between 2 consecutive policies, the norm of gradients and loss values) can be seen below:
-![distances_5e-4_2024-02-17_17-14-36_histogram](https://github.com/PaulTiberiu/RL-Gradient-Visualization-Tool/assets/123265734/4497a166-3c3c-4d3c-a901-cdd9cd14b5df)
-![gradient_norm_2024-02-13_18-38-28_histogram](https://github.com/PaulTiberiu/RL-Gradient-Visualization-Tool/assets/123265734/b59cab8e-2456-44f9-ab2d-1f4867ae89cb)
-![loss_values_2024-02-13_18-38-29_histogram](https://github.com/PaulTiberiu/RL-Gradient-Visualization-Tool/assets/123265734/de20094c-b07b-4f7c-b9f0-9481a16be674)
+<img src="https://github.com/PaulTiberiu/RL-Gradient-Visualization-Tool/assets/123265734/4497a166-3c3c-4d3c-a901-cdd9cd14b5df" width="400">
+<img src="https://github.com/PaulTiberiu/RL-Gradient-Visualization-Tool/assets/123265734/b59cab8e-2456-44f9-ab2d-1f4867ae89cb" width="400">
+<img src="https://github.com/PaulTiberiu/RL-Gradient-Visualization-Tool/assets/123265734/de20094c-b07b-4f7c-b9f0-9481a16be674" width="400">
+
 
 
 ## Policies visualization tool
