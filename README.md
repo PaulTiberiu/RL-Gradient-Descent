@@ -17,6 +17,11 @@ This tool will allow us to display the performance of policies within a selected
 Below is an illustration depicting policies with rewards of 500, using the cartpole environment:
 ![policy_2024-03-20_12-44-23](https://github.com/PaulTiberiu/RL-Gradient-Visualization-Tool/assets/123265734/f8a1b8f7-2744-4083-8642-b1cd305200f0)
 
+
+In order to enhance the interactivity of our plots, we utilized Plotly, a data visualization library. This enables us to create more sophisticated visualizations, such as adjusting the plot size and displaying the exact reward value and its corresponding weighted sum coefficients for each point on the plot.
+
+
+
 For multiple plots you can check the visualization_results folder of our Github.
 
 # BBRL - ALGOS
