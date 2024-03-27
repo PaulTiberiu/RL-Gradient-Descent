@@ -386,6 +386,7 @@ def is_inside_triangle(point, A, B, C):
 
     return ((b1 == b2) and (b2 == b3))
 
+
 def policies_visualization(cfg, env_agent, num_points, loaded_agents):
 
     #1. Calculating alphas
@@ -456,6 +457,23 @@ def policies_visualization(cfg, env_agent, num_points, loaded_agents):
     plot_triangle_with_multiple_points(alphas, rewards_list)
 
 
+def get_policy_projection(p, p1, p2, p3):
+    """
+    Calculate the projection p' of policy p (corresponding to a trajectory point) 
+    onto the plane spanned by p1, p2, p3.
+    """
+
+    coefficients = get_alphas_from_point(*p)
+    p_prime = np.dot(coefficients, [p1, p2, p3])
+    return p_prime
+
+def get_coefficients_from_p_prime(p_prime):
+    """
+    Calculate the coefficients (alphas) such that p' = a1 * p1 +  a2 * p2 + a3 * p3.
+    """
+
+    return get_alphas_from_point(*p_prime)
+
 
 @hydra.main(
     config_path="../algos/dqn/configs/",
@@ -488,7 +506,23 @@ def main(cfg_raw: DictConfig):
     #reward = create_new_DQN_agent_and_evaluate(cfg_raw, eval_env_agent, new_theta) 
     #print(reward)
 
-    policies_visualization(cfg_raw, eval_env_agent, 80, load_policies(loaded_agents))
+    #policies_visualization(cfg_raw, eval_env_agent, 80, load_policies(loaded_agents))
+
+    #p = (0.5, np.sqrt(3)/6)  # Coordonnées de la politique p
+    p = (0.5, 0)
+    p1, p2, p3 = [(0, 0), (0.5, np.sqrt(3)/2), (1, 0)]  # Coordonnées des politiques p1, p2, p3
+    p_prime = get_policy_projection(p, p1, p2, p3)
+
+    print(p_prime.tolist())
+
+    p_prime = p_prime.tolist()
+
+    (x, y) = (p_prime[0], p_prime[1])
+    p_prime = (x, y)
+    coefficients = get_coefficients_from_p_prime(p_prime)
+    print(coefficients)
+
+
 
 
 if __name__ == "__main__":
