@@ -23,6 +23,8 @@ In order to get this results, firstly you need to execute 3 times the dqnv2.py s
 
 For multiple plots you can check the visualization_results folder of our Github.
 
+Note: The policies visualization tool can be used for the td3 and dqn algorithms.
+
 # BBRL - ALGOS
 Below, you can find information regarding the purpose and installation of the BBRL - ALGOS library, which our tool utilizes:
 
