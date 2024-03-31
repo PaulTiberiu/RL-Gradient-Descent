@@ -20,15 +20,21 @@ from bbrl_algos.models.loggers import Logger
 from bbrl.agents import Agent, TemporalAgent, Agents
 from bbrl_algos.algos.dqn.dqn import local_get_env_agents
 from bbrl_algos.models.critics import DiscreteQAgent
+from bbrl_algos.models.actors import ContinuousDeterministicActor
+from bbrl_algos.models.critics import ContinuousQAgent
+
+
 from bbrl.workspace import Workspace
+from bbrl_algos.models.envs import get_eval_env_agent
 
 import plotly.graph_objects as go
+from cvxopt import matrix, solvers
 
 
 
 def extract_number_from_filename(filename):
     """
-    Extracts the numerical value (XXX) from a filename of the form "CartPole-v1dqnXXX.agt"
+    Extracts the numerical value (XXX) from a filename of the form "CartPole-v1dqnXXX.agt"True
     """
     match = re.search(r'CartPole-v1dqn(\d+\.\d+).agt', filename)
     if match:
@@ -91,12 +97,12 @@ def get_best_policy(date, time, suffix):
 
 
 
-def load_best_agent():
+def load_best_agent(directory):
     """
     Load all the best agents in the dqn_best_agents folder using agent.load_model and store them in a list
     """
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    source_dir = os.path.join(script_directory, "dqn_best_agents")
+    source_dir = os.path.join(script_directory, directory)
 
     # Get a list of files in the dqn_best_agents folder
     agt_files = [f for f in os.listdir(source_dir) if f.endswith(".agt")]
@@ -123,7 +129,7 @@ def load_policies(loaded_agents):
     return list_policies
 
 
-def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
+def plot_triangle_with_multiple_points(alpha_reward_list):
     """
     Plot a triangle with vertices representing policies and a new point calculated as a weighted sum of policies.
     Color the new point based on its reward value.
@@ -145,6 +151,9 @@ def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
     plt.text(triangle_vertices[2, 0], triangle_vertices[2, 1] + 0.03, 'p3', fontsize=10)
 
     #norm = mcolors.Normalize(vmin=0, vmax=500) #TO TO HAVE THE VALUES FROM 0 TO 500
+    alphas_list, rewards_list = zip(*alpha_reward_list)
+    # Normalize rewards for colormap
+    norm = plt.Normalize(vmin=min(rewards_list), vmax=max(rewards_list))
     norm = mcolors.Normalize(vmin=min(rewards_list), vmax=max(rewards_list))
 
     # Choose a colormap that covers the entire range of rewards
@@ -152,7 +161,8 @@ def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
     #cmap = plt.get_cmap('viridis')
 
     # Plot the points with adjusted positions and transparency
-    for coefs, reward in zip(coefficients_list, rewards_list):
+    for coefs, reward in (alpha_reward_list):
+        #print(coefs, reward)
         new_point = np.dot(np.array(coefs), triangle_vertices[:3])
         #jitter = np.random.normal(0, 0.01, 2)  # Add a small random jitter to avoid superposition
         #plt.scatter(new_point[0] + jitter[0], new_point[1] + jitter[1], c=reward, cmap=cmap, norm=norm, alpha=0.5, s=250)
@@ -189,7 +199,7 @@ def plot_triangle_with_multiple_points(coefficients_list, rewards_list):
 
 
 
-def plot_triangle_with_multiple_points_plotly(coefficients_list, rewards_list):
+def plot_triangle_with_multiple_points_plotly(alpha_reward_list):
     """
     Plot a triangle with vertices representing policies and a new point calculated as a weighted sum of policies.
     Color the new point based on its reward value.
@@ -199,11 +209,8 @@ def plot_triangle_with_multiple_points_plotly(coefficients_list, rewards_list):
     - rewards_list (list of torch.Tensor): List of reward tensors for each point.
     """
 
-    # Convert Torch tensors to standard Python numbers
-    rewards_list = [reward.item() for reward in rewards_list]
-
     # Generate the vertices of the equilateral triangle
-    triangle_vertices = np.array([[0, 0], [1, 0], [0.5, np.sqrt(3)/2],[0,0]])
+    triangle_vertices = np.array([[0, 0], [1, 0], [0.5, np.sqrt(3)/2], [0,0]])
 
     # Create trace for triangle edges
     triangle_edges = go.Scatter(
@@ -226,13 +233,21 @@ def plot_triangle_with_multiple_points_plotly(coefficients_list, rewards_list):
     )
 
     # Create trace for new points
+    alphas_list, rewards_list = zip(*alpha_reward_list)
+    # Convert Torch tensors to standard Python numbers
+    rewards_list = [reward.item() for reward in rewards_list]
+    #print(rewards_list)
+
+    # Normalize rewards for colormap
+    norm = plt.Normalize(vmin=min(rewards_list), vmax=max(rewards_list))
     min_reward = min(rewards_list)
     max_reward = max(rewards_list)
 
 
     # Create trace for new points with the updated colorbar attributes
     new_points = []
-    for coefs, reward in zip(coefficients_list, rewards_list):
+    for coefs, reward in (alpha_reward_list):
+        reward = reward.item()
         new_point = np.dot(np.array(coefs), triangle_vertices[:3])
         hover_text = f"Reward: {reward:.2f}<br>Coordinates: ({new_point[0]:.2f}, {new_point[1]:.2f})<br>Alphas: {coefs}"
         new_points.append(go.Scatter(
@@ -289,7 +304,7 @@ def update_policy_with_coefficients(list_policies, coefficients):
 
     return updated_policy
 
-def create_new_DQN_agent_and_evaluate(cfg, env_agent, theta):
+def create_new_DQN_agent(cfg, env_agent):
 
     # Create the agent
     obs_size, act_size = env_agent.get_obs_and_actions_sizes()
@@ -298,6 +313,20 @@ def create_new_DQN_agent_and_evaluate(cfg, env_agent, theta):
     )
     ev_agent = Agents(env_agent, policy)
     eval_agent = TemporalAgent(ev_agent)
+    return eval_agent
+
+def create_new_TD3_agent(cfg, env_agent):
+
+    # Create the agent
+    obs_size, act_size = env_agent.get_obs_and_actions_sizes()
+    policy = globals()["ContinuousDeterministicActor"](
+        obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size
+    )
+    ev_agent = Agents(env_agent, policy)
+    eval_agent = TemporalAgent(ev_agent)
+    return eval_agent
+
+def evaluate_agent(eval_agent,theta):
 
     # Calculate the reward
     torch.nn.utils.vector_to_parameters(theta, eval_agent.parameters())
@@ -387,9 +416,9 @@ def is_inside_triangle(point, A, B, C):
     return ((b1 == b2) and (b2 == b3))
 
 
-def policies_visualization(cfg, env_agent, num_points, loaded_agents):
+def policies_visualization(eval_agent, num_points, loaded_policies):
 
-    #1. Calculating alphas
+    #1. Calculating alphas and rewards
 
     points = generate_left_edge_points(num_points)
     points2 = generate_lower_edge_points(num_points)
@@ -408,7 +437,14 @@ def policies_visualization(cfg, env_agent, num_points, loaded_agents):
         for j in range(len(points2)):
             slope, b = axis_equations_points[i]
             x_coord = points2[j][0]
-            intersection.append(intersection_point(slope, b, x_coord))
+            intersection_point_val = intersection_point(slope, b, x_coord)
+            # Check if the intersection point is not already in points or points2
+            if (intersection_point_val not in points) and (intersection_point_val not in points2):
+                # Check if the intersection point lies in the positive quadrant
+                if intersection_point_val[0] > 0 and intersection_point_val[1] > 0:
+                    intersection.append(intersection_point_val)
+
+    print(intersection)
 
     #print(intersection)
 
@@ -424,61 +460,109 @@ def policies_visualization(cfg, env_agent, num_points, loaded_agents):
     x_intersection = [point[0] for point in intersection]
     y_intersection = [point[1] for point in intersection]
 
-    alphas = []
-    i = 0
-    for i in range(len(x_points)):
-        if(is_inside_triangle([x_points[i],y_points[i]], [0, 0], [1, 0], [0.5, np.sqrt(3)/2])):
-            alphas.append(get_alphas_from_point(x_points[i],y_points[i]))
-    j = 0
-    for j in range(len(x_points2)):
-        if(is_inside_triangle([x_points2[j],y_points2[j]], [0, 0], [1, 0], [0.5, np.sqrt(3)/2])):
-            alphas.append(get_alphas_from_point(x_points2[j],y_points2[j]))
-    k = 0
-    for k in range(len(x_intersection)):
-        if(is_inside_triangle([x_intersection[k],y_intersection[k]], [0, 0], [1, 0], [0.5, np.sqrt(3)/2])):
-            alphas.append(get_alphas_from_point(x_intersection[k],y_intersection[k]))
-
-    #print(len(alphas))
-
-    #2. Calculating rewards
-    rewards_list = []
+    alpha_reward_list = []  # List to store tuples of alphas and rewards
     cpt=0
-    print(len(alphas))
-    for alpha in alphas:
-        #print(alpha)
-        theta = update_policy_with_coefficients(loaded_agents, alpha) # a1P1+a2P2+a3P3
-        rewards_list.append(create_new_DQN_agent_and_evaluate(cfg, env_agent, theta))
-        cpt+=1
-        print(cpt)
+
+    for i in range(len(x_points)):
+        if is_inside_triangle([x_points[i], y_points[i]], [0, 0], [1, 0], [0.5, np.sqrt(3) / 2]):
+            print(x_points[i], y_points[i])
+            alpha = get_alphas_from_point(x_points[i], y_points[i])
+            print(alpha)
+            theta = update_policy_with_coefficients(loaded_policies, alpha)
+            print("theta : ", theta)
+            print("theta : ", theta.min(), theta.max(), theta.mean())
+            array = theta.detach().numpy()
+            print(array)
+            reward = evaluate_agent(eval_agent, theta)
+            print(reward.item())
+            alpha_reward_list.append((alpha, reward))
+            cpt+=1
+            print(cpt)
+
+    for j in range(len(x_points2)):
+        if is_inside_triangle([x_points2[j], y_points2[j]], [0, 0], [1, 0], [0.5, np.sqrt(3) / 2]):
+            alpha = get_alphas_from_point(x_points2[j], y_points2[j])
+            theta = update_policy_with_coefficients(loaded_policies, alpha)
+            print(evaluate_agent(eval_agent, theta))
+            reward = evaluate_agent(eval_agent, theta)
+            alpha_reward_list.append((alpha, reward))
+            cpt+=1
+            print(cpt)
+
+    for k in range(len(x_intersection)):
+        if is_inside_triangle([x_intersection[k], y_intersection[k]], [0, 0], [1, 0], [0.5, np.sqrt(3) / 2]):
+            print(x_intersection[k], y_intersection[k])
+            alpha = get_alphas_from_point(x_intersection[k], y_intersection[k])
+            print(alpha)
+            theta = update_policy_with_coefficients(loaded_policies, alpha)
+            reward = evaluate_agent(eval_agent, theta)
+            print(reward.item())
+            alpha_reward_list.append((alpha, reward))
+            cpt+=1
+            print(cpt)
 
 
     #3. Plotting the triangle with the points
-    plot_triangle_with_multiple_points_plotly(alphas, rewards_list)
-    plot_triangle_with_multiple_points(alphas, rewards_list)
+    plot_triangle_with_multiple_points_plotly(alpha_reward_list)
+    plot_triangle_with_multiple_points(alpha_reward_list)
 
 
-def get_policy_projection(p, p1, p2, p3):
+def projection_convex_hull(p, p1, p2, p3):
     """
-    Calculate the projection p' of policy p (corresponding to a trajectory point) 
-    onto the plane spanned by p1, p2, p3.
-    """
+    Find the projection of a point onto the convex hull defined by three points q, r and s.
 
-    coefficients = get_alphas_from_point(*p)
-    p_prime = np.dot(coefficients, [p1, p2, p3])
-    return p_prime
+    Parameters:
+        p (numpy.array): The point to be projected.
+        q = p1(numpy.array): First vector defining the convex hull.
+        r = p2(numpy.array): Second vector defining the convex hull.
+        s = p3(numpy.array): Third vector defining the convex hull.
 
-def get_coefficients_from_p_prime(p_prime):
+    Returns:
+        numpy.array: The projected point.
     """
-    Calculate the coefficients (alphas) such that p' = a1 * p1 +  a2 * p2 + a3 * p3.
-    """
+    # Ensure all vectors have the same dimension
+    assert p.shape == p1.shape == p2.shape == p3.shape, "All vectors must have the same dimension"
 
-    return get_alphas_from_point(*p_prime)
+    n = 3
+    # Construct the P and q matrices for the QP problem
+    p_mat = 2 * np.array(
+        [[np.dot(p1, p1), np.dot(p1, p2), np.dot(p1, p3)],
+         [np.dot(p1, p2), np.dot(p2, p2), np.dot(p2, p3)],
+         [np.dot(p1, p3), np.dot(p2, p3), np.dot(p3, p3)]])
+    q_mat = -2 * np.array([np.dot(p, p1),
+                           np.dot(p, p2),
+                           np.dot(p, p3)])
+
+    g_mat = np.array([[-1, 0, 0],
+                      [0, -1, 0],
+                      [0, 0, -1]])
+    h_mat = np.array([0, 0, 0])
+    a_mat = np.array([[1, 1, 1]])
+    b_mat = np.array([1.])
+
+    # Convert matrices to cvxopt format
+    p_mat = matrix(p_mat, (n, n), 'd')
+    q_mat = matrix(q_mat, (n, 1), 'd')
+    g_mat = matrix(g_mat, (n, n), 'd')
+    h_mat = matrix(h_mat, (n, 1), 'd')
+    a_mat = matrix(a_mat, (1, n), 'd')
+    b_mat = matrix(b_mat, (1, 1), 'd')
+
+    sol = solvers.qp(p_mat, q_mat, G=g_mat, h=h_mat, A=a_mat, b=b_mat) #quadratique program
+
+    # Convert solution to triple (a1, a2, a3)
+    a1, a2, a3 = np.array(sol['x'])
+
+    # Return projected point's coefficients
+    return a1, a2, a3
+
 
 
 @hydra.main(
-    config_path="../algos/dqn/configs/",
-    config_name="dqn_cartpole.yaml",
-    #config_name="dqn_lunar_lander.yaml", #cartpole
+    #config_path="../algos/dqn/configs/",
+    #config_name="dqn_cartpole.yaml",
+    config_path="../algos/td3/configs/",
+    config_name="td3_swimmer.yaml",
 )  # , version_base="1.3")
 
 def main(cfg_raw: DictConfig):
@@ -487,7 +571,7 @@ def main(cfg_raw: DictConfig):
     date = "2024-03-20" 
     time = "12-11-42"
     get_best_policy(date, time, 1)
-
+                                                                                         
     date = "2024-03-20" 
     time = "12-14-28"
     get_best_policy(date, time, 2)
@@ -496,34 +580,14 @@ def main(cfg_raw: DictConfig):
     time = "12-16-48"
     get_best_policy(date, time, 3)
 
-    loaded_agents = load_best_agent()
-
-    #new_theta = update_policy_with_coefficients(load_policies(loaded_agents), [0.5, 0.3, 0.2])
-    #print(new_theta)
+    #loaded_agents = load_best_agent("dqn_best_agents")
+    loaded_agents = load_best_agent("td3_best_agents_swimmer")                                                         
 
     _, eval_env_agent = local_get_env_agents(cfg_raw)
-    
-    #reward = create_new_DQN_agent_and_evaluate(cfg_raw, eval_env_agent, new_theta) 
-    #print(reward)
+    #eval_agent = create_new_DQN_agent(cfg_raw, eval_env_agent)
+    eval_agent = create_new_TD3_agent(cfg_raw, eval_env_agent)
 
-    #policies_visualization(cfg_raw, eval_env_agent, 80, load_policies(loaded_agents))
-
-    #p = (0.5, np.sqrt(3)/6)  # Coordonnées de la politique p
-    p = (0.5, 0)
-    p1, p2, p3 = [(0, 0), (0.5, np.sqrt(3)/2), (1, 0)]  # Coordonnées des politiques p1, p2, p3
-    p_prime = get_policy_projection(p, p1, p2, p3)
-
-    print(p_prime.tolist())
-
-    p_prime = p_prime.tolist()
-
-    (x, y) = (p_prime[0], p_prime[1])
-    p_prime = (x, y)
-    coefficients = get_coefficients_from_p_prime(p_prime)
-    print(coefficients)
-
-
-
+    policies_visualization(eval_agent, 3, load_policies(loaded_agents))
 
 if __name__ == "__main__":
     main()
