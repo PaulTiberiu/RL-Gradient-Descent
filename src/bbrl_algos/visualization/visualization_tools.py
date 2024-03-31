@@ -78,3 +78,14 @@ def is_grad_norm_proportional_to_distance(cfg):
             #print(abs(k - cfg.optimizer.lr))
 
     return True
+
+def save(agent, env_name, score, dirname, fileroot, cpt):
+    # Adjusting the path for dirname
+    dirname = "../../../../../../visualization/" + dirname
+    if not os.path.exists(dirname + "/" + env_name):
+        os.makedirs(dirname + "/" + env_name)
+
+    cpt_str = str(cpt)
+    # Constructing the filename with correct path separators
+    filename = os.path.join(dirname, env_name, fileroot + str(score.item()) + "_" + cpt_str + ".agt")
+    agent.save_model(filename)
