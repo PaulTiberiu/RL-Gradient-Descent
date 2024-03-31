@@ -69,7 +69,7 @@ from loggers import VisualizationLogger
 
 sys.path.append('../../visualization')  # Add the path to get to visualization_tools.py
 from visualization_tools import calculate_euclidean_distance
-from visualization_tools import calculate_gradient_norm
+from visualization_tools import calculate_gradient_norm, save
 
 matplotlib.use("TkAgg")
 
@@ -209,6 +209,7 @@ def run_dqn(cfg, logger, trial=None):
     grad_logger.delete_file()
     distance_logger.delete_file()
     policy_logger.delete_file()
+    cpt = 1
 
 
     prev_policy = None
@@ -307,6 +308,14 @@ def run_dqn(cfg, logger, trial=None):
             print(
                 f"nb_steps: {nb_steps}, reward: {mean:.02f}, best: {best_reward:.02f}"
             )
+
+            ############################################################################################################################
+            # chaque fois quand on print le nb de steps, on va stocker dans un dossier l'agent contenant la politique (pas la meilleure!)
+            ############################################################################################################################nb_steps - tmp_steps_eval
+
+            if (nb_steps // 10000 >= cpt):
+                save(eval_agent, cfg.gym_env.env_name, mean, "dqn_agents", "dqn", cpt)
+                cpt+=1
 
             if trial is not None:
                 trial.report(mean, nb_steps)
