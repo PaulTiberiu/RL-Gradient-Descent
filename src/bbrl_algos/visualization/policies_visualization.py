@@ -575,7 +575,6 @@ def policies_visualization(eval_agent, num_points, loaded_policies, policies_tra
                     intersection.append(intersection_point_val)
 
     #print(intersection)
-
     #print(intersection)
 
     # Extract x and y coordinates from points
@@ -593,43 +592,51 @@ def policies_visualization(eval_agent, num_points, loaded_policies, policies_tra
     alpha_reward_list = []  # List to store tuples of alphas and rewards
     cpt=0
 
+    # Calculate the particular point reward (tip of the triangle)
+    theta = update_policy_with_coefficients(loaded_policies, [0, 0, 1])
+    reward = evaluate_agent(eval_agent, theta)
+    alpha_reward_list.append(([0, 0, 1], reward))
+
     for i in range(len(x_points)):
         if is_inside_triangle([x_points[i], y_points[i]], [0, 0], [1, 0], [0.5, np.sqrt(3) / 2]):
-            #print(x_points[i], y_points[i])
-            alpha = get_alphas_from_point(x_points[i], y_points[i])
-            #print(alpha)
-            theta = update_policy_with_coefficients(loaded_policies, alpha)
-            #print("theta : ", theta)
-            #print("theta : ", theta.min(), theta.max(), theta.mean())
-            #array = theta.detach().numpy()
-            #print(array)
-            reward = evaluate_agent(eval_agent, theta)
-            #print(reward.item())
-            alpha_reward_list.append((alpha, reward))
-            cpt+=1
-            print(cpt)
+            if(x_points[i] != 0.5 and y_points[i] != np.sqrt(3)/2):
+                #print(x_points[i], y_points[i])
+                alpha = get_alphas_from_point(x_points[i], y_points[i])
+                #print(alpha)
+                theta = update_policy_with_coefficients(loaded_policies, alpha)
+                #print("theta : ", theta)
+                #print("theta : ", theta.min(), theta.max(), theta.mean())
+                #array = theta.detach().numpy()
+                #print(array)
+                reward = evaluate_agent(eval_agent, theta)
+                #print(reward.item())
+                alpha_reward_list.append((alpha, reward))
+                cpt+=1
+                print(cpt)
 
     for j in range(len(x_points2)):
         if is_inside_triangle([x_points2[j], y_points2[j]], [0, 0], [1, 0], [0.5, np.sqrt(3) / 2]):
-            alpha = get_alphas_from_point(x_points2[j], y_points2[j])
-            theta = update_policy_with_coefficients(loaded_policies, alpha)
-            #print(evaluate_agent(eval_agent, theta))
-            reward = evaluate_agent(eval_agent, theta)
-            alpha_reward_list.append((alpha, reward))
-            cpt+=1
-            print(cpt)
+            if(x_points2[i] != 0.5 and y_points2[i] != np.sqrt(3)/2):
+                alpha = get_alphas_from_point(x_points2[j], y_points2[j])
+                theta = update_policy_with_coefficients(loaded_policies, alpha)
+                #print(evaluate_agent(eval_agent, theta))
+                reward = evaluate_agent(eval_agent, theta)
+                alpha_reward_list.append((alpha, reward))
+                cpt+=1
+                print(cpt)
 
     for k in range(len(x_intersection)):
         if is_inside_triangle([x_intersection[k], y_intersection[k]], [0, 0], [1, 0], [0.5, np.sqrt(3) / 2]):
-            #print(x_intersection[k], y_intersection[k])
-            alpha = get_alphas_from_point(x_intersection[k], y_intersection[k])
-            #print(alpha)
-            theta = update_policy_with_coefficients(loaded_policies, alpha)
-            reward = evaluate_agent(eval_agent, theta)
-            #print(reward.item())
-            alpha_reward_list.append((alpha, reward))
-            cpt+=1
-            print(cpt)
+            if(x_intersection[i] != 0.5 and y_intersection[i] != np.sqrt(3)/2):
+                #print(x_intersection[k], y_intersection[k])
+                alpha = get_alphas_from_point(x_intersection[k], y_intersection[k])
+                #print(alpha)
+                theta = update_policy_with_coefficients(loaded_policies, alpha)
+                reward = evaluate_agent(eval_agent, theta)
+                #print(reward.item())
+                alpha_reward_list.append((alpha, reward))
+                cpt+=1
+                print(cpt)
 
     alpha_reward_traj = []
     p1 = loaded_policies[0].detach().numpy()
@@ -746,7 +753,7 @@ def main(cfg_raw: DictConfig):
     #list_agents_traj = read_and_sort_agents("td3_agents", "Swimmer-v3")
     list_policies_traj = load_policies(list_agents_traj)
 
-    policies_visualization(eval_agent, 10, load_policies(loaded_agents), list_policies_traj, plot_traj=False)
+    policies_visualization(eval_agent, 80, load_policies(loaded_agents), list_policies_traj, plot_traj=True)
 
 
 
