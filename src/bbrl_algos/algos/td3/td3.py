@@ -28,6 +28,20 @@ from bbrl_algos.models.utils import save_best
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
 
+import os
+import sys
+
+# Append the path to the 'dqn' directory to the Python path
+td3_path = os.path.join(os.path.dirname(__file__), "td3")
+sys.path.append(td3_path)
+
+# Append the path to the 'models' directory to the Python path
+models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'models'))
+sys.path.append(models_path)
+
+sys.path.append('../../visualization')  # Add the path to get to visualization_tools.py
+from visualization_tools import save
+
 # HYDRA_FULL_ERROR = 1
 
 import matplotlib
@@ -111,6 +125,7 @@ def run_td3(cfg, logger, trial=None):
     best_reward = float("-inf")
     delta_list = []
     mean = 0
+    cpt = 1
 
     # 2) Create the environment agents
     train_env_agent, eval_env_agent = get_env_agents(cfg)
@@ -258,6 +273,11 @@ def run_td3(cfg, logger, trial=None):
                 trial.report(mean, nb_steps)
                 if trial.should_prune():
                     raise optuna.TrialPruned()
+            
+
+            if (nb_steps // 50000 >= cpt):
+                save(eval_agent, cfg.gym_env.env_name, mean, "td3_agents", "td3", cpt)
+                cpt+=1
 
             if cfg.save_best and best_reward == mean:
                 save_best(
@@ -288,7 +308,8 @@ def run_td3(cfg, logger, trial=None):
     config_path="configs/",
     # config_name="td3_cartpolecontinuous.yaml"
     # config_name="td3_pendulum_optuna.yaml",
-    config_name="td3_walker_test.yaml",
+    # config_name="td3_walker_test.yaml",
+    config_name = "td3_swimmer.yaml"
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
