@@ -33,7 +33,7 @@ from bbrl_algos.models.envs import get_eval_env_agent
 
 import plotly.graph_objects as go
 from cvxopt import matrix, solvers
-
+from matplotlib.colors import LinearSegmentedColormap
 
 
 def extract_number_from_filename(filename):
@@ -71,9 +71,10 @@ def extract_number_from_filename_traj(filename):
     return float('inf')
 
 
-def read_and_sort_agents():
+def read_and_sort_agents(dirname, env_name): #dirname, env_name
         script_directory = os.path.dirname(os.path.abspath(__file__))
-        source_dir = os.path.join(script_directory, "dqn_agents", "CartPole-v1")
+        #source_dir = os.path.join(script_directory, "dqn_agents", "CartPole-v1")
+        source_dir = os.path.join(script_directory, dirname, env_name)
         #print(source_dir)
         
         # Get a list of folders in chronological order
@@ -166,7 +167,7 @@ def load_policies(loaded_agents):
     return list_policies
 
 
-def plot_triangle_with_multiple_points(alpha_reward_list, alpha_reward_traj):
+def plot_triangle_with_multiple_points(alpha_reward_list, alpha_reward_traj, plot_traj):
     """
     Plot a triangle with vertices representing policies and a new point calculated as a weighted sum of policies.
     Color the new point based on its reward value.
@@ -208,29 +209,48 @@ def plot_triangle_with_multiple_points(alpha_reward_list, alpha_reward_traj):
     plt.xlim(-0.1, 1.1)
     plt.ylim(-0.1, np.sqrt(3)/2 + 0.1)
 
-    for coefs, reward in (alpha_reward_traj):
-        new_point = np.dot(np.array(coefs), triangle_vertices[:3])
-        plt.scatter(new_point[0], new_point[1], c=reward, cmap=cmap, norm=norm, s=60)
+    if(plot_traj):
+        for coefs, reward in (alpha_reward_traj):
+            new_point = np.dot(np.array(coefs), triangle_vertices[:3])
+            plt.scatter(new_point[0], new_point[1], c=reward, cmap=cmap, norm=norm, s=60)
+        
 
-    # Plot trajectory
-    for i in range(1, len(alpha_reward_traj)):
-        coefs1, _ = alpha_reward_traj[i-1]
-        coefs2, _ = alpha_reward_traj[i]
-        plt.plot([np.dot(np.array(coefs1), triangle_vertices[:3])[0], np.dot(np.array(coefs2), triangle_vertices[:3])[0]], 
-                [np.dot(np.array(coefs1), triangle_vertices[:3])[1], np.dot(np.array(coefs2), triangle_vertices[:3])[1]], 
-                color='yellow', linewidth=2.5)
+        # Define colors
+        yellow = [1, 1, 0]  # RGB values for yellow
+        green = [0, 0.5, 0]   # RGB values for green
+        power = 1
+        # Plot trajectory with gradient color
+        for i in range(1, len(alpha_reward_traj)):
+            coefs1, _ = alpha_reward_traj[i-1]
+            coefs2, _ = alpha_reward_traj[i]
+            interpolation = i / len(alpha_reward_traj)
+            color = [yellow[j] + (green[j] - yellow[j]) * (interpolation ** power) for j in range(3)]
+            plt.plot([np.dot(np.array(coefs1), triangle_vertices[:3])[0], np.dot(np.array(coefs2), triangle_vertices[:3])[0]], 
+                    [np.dot(np.array(coefs1), triangle_vertices[:3])[1], np.dot(np.array(coefs2), triangle_vertices[:3])[1]], 
+                    color=color , linewidth=2.5)
 
     # Add color bar legend
     cbar = plt.colorbar(cm.ScalarMappable(cmap=cmap, norm=norm), ax=plt.gca())
     cbar.set_label('Reward')
 
+
     # Add legend
 
     # Define custom legend elements
-    legend_elements = [
-        mlines.Line2D([], [], color='yellow', linewidth=1, label='Policies Trajectory'),
-        mlines.Line2D([], [], color='black', linewidth=1, label='Triangle Edges'),
-    ]
+    
+    if(plot_traj):
+        legend_elements = [
+            mlines.Line2D([], [], color='yellow', marker='o', markersize=10, label='Source'),
+            mlines.Line2D([], [], color='green', marker='o', markersize=10, label='Destination'),
+            mlines.Line2D([], [], color='yellow', linewidth=1, label='Policies Trajectory'),
+            mlines.Line2D([], [], color='black', linewidth=1, label='Triangle Edges'),
+        ]
+        
+    else:
+        legend_elements = [
+            mlines.Line2D([], [], color='black', linewidth=1, label='Triangle Edges')
+        ]
+
 
     # Add legend
     plt.legend(handles=legend_elements)
@@ -256,7 +276,7 @@ def plot_triangle_with_multiple_points(alpha_reward_list, alpha_reward_traj):
 
 
 
-def plot_triangle_with_multiple_points_plotly(alpha_reward_list, alpha_reward_traj):
+def plot_triangle_with_multiple_points_plotly(alpha_reward_list, alpha_reward_traj, plot_traj):
     """
     Plot a triangle with vertices representing policies and a new point calculated as a weighted sum of policies.
     Color the new point based on its reward value.
@@ -359,18 +379,24 @@ def plot_triangle_with_multiple_points_plotly(alpha_reward_list, alpha_reward_tr
             showlegend=False,
         ))
 
-    # Convert alpha_reward_traj to Plotly traces for trajectory
-    traj_lines = []
-    for i in range(1, len(alpha_reward_traj)):
-        coefs1, _ = alpha_reward_traj[i-1]
-        coefs2, _ = alpha_reward_traj[i]
-        traj_lines.append(go.Scatter(
-            x=[np.dot(np.array(coefs1), triangle_vertices[:3])[0], np.dot(np.array(coefs2), triangle_vertices[:3])[0]],
-            y=[np.dot(np.array(coefs1), triangle_vertices[:3])[1], np.dot(np.array(coefs2), triangle_vertices[:3])[1]],
-            mode='lines',
-            line=dict(color='yellow', width=2.5),
-            showlegend=False,
-        ))
+    if(plot_traj):
+        # Convert alpha_reward_traj to Plotly traces for trajectory
+        # Define the custom color scale from yellow to green
+        colormap = plt.cm.summer_r  # Choose a colormap (you can change it if needed)
+        num_segments = len(alpha_reward_traj) - 1
+        traj_lines = []
+        for i in range(num_segments):
+            coefs1, _ = alpha_reward_traj[i]
+            coefs2, _ = alpha_reward_traj[i + 1]
+            interpolation = i / num_segments
+            color = mcolors.rgb2hex(colormap(interpolation))
+            traj_lines.append(go.Scatter(
+                x=[np.dot(np.array(coefs1), triangle_vertices[:3])[0], np.dot(np.array(coefs2), triangle_vertices[:3])[0]],
+                y=[np.dot(np.array(coefs1), triangle_vertices[:3])[1], np.dot(np.array(coefs2), triangle_vertices[:3])[1]],
+                mode='lines',
+                line=dict(color=color, width=2.5),
+                showlegend=False,
+            ))
 
 
     # Create layout
@@ -382,8 +408,12 @@ def plot_triangle_with_multiple_points_plotly(alpha_reward_list, alpha_reward_tr
     )
 
     # Plot
-    fig = go.Figure(data=[triangle_edges, policy_vertices] + new_points + new_points_traj +traj_lines, layout=layout)
-    fig.show()
+    if(plot_traj):
+        fig = go.Figure(data=[triangle_edges, policy_vertices] + new_points + new_points_traj + traj_lines, layout=layout)
+        fig.show()
+    else:
+        fig = go.Figure(data=[triangle_edges, policy_vertices] + new_points, layout=layout)
+        fig.show()
 
 
 def update_policy_with_coefficients(list_policies, coefficients):
@@ -426,7 +456,7 @@ def create_new_TD3_agent(cfg, env_agent):
     eval_agent = TemporalAgent(ev_agent)
     return eval_agent
 
-def evaluate_agent(eval_agent,theta):
+def evaluate_agent(eval_agent, theta):
 
     # Calculate the reward
     torch.nn.utils.vector_to_parameters(theta, eval_agent.parameters())
@@ -516,7 +546,7 @@ def is_inside_triangle(point, A, B, C):
     return ((b1 == b2) and (b2 == b3))
 
 
-def policies_visualization(eval_agent, num_points, loaded_policies, policies_traj):
+def policies_visualization(eval_agent, num_points, loaded_policies, policies_traj, plot_traj):
 
     #1. Calculating alphas and rewards
 
@@ -606,28 +636,24 @@ def policies_visualization(eval_agent, num_points, loaded_policies, policies_tra
     p2 = loaded_policies[1].detach().numpy()
     p3 = loaded_policies[2].detach().numpy()
 
-
-
     # print("p1 : ", p1)
     # print("p2 : ", p2)
     # print("p3 : ", p3)
 
-
-    for policy in policies_traj:
-        policy = policy.detach().numpy()
-        a1, a2, a3 = projection_convex_hull(policy, p1, p2, p3)
-        coeff_list = [a1.item(), a2.item(), a3.item()]  # Convert NumPy arrays to Python scalars
-        p_prime = update_policy_with_coefficients(loaded_policies, coeff_list)
-        #print(p_prime)
-        reward_traj = evaluate_agent(eval_agent, p_prime)
-        #print(reward_traj.item())
-        alpha_reward_traj.append((coeff_list, reward_traj))
-
-
+    if(plot_traj):
+        for policy in policies_traj:
+            policy = policy.detach().numpy()
+            a1, a2, a3 = projection_convex_hull(policy, p1, p2, p3)
+            coeff_list = [a1.item(), a2.item(), a3.item()]  # Convert NumPy arrays to Python scalars
+            p_prime = update_policy_with_coefficients(loaded_policies, coeff_list)
+            #print(p_prime)
+            reward_traj = evaluate_agent(eval_agent, p_prime)
+            #print(reward_traj.item())
+            alpha_reward_traj.append((coeff_list, reward_traj))
 
     #3. Plotting the triangle with the points
-    plot_triangle_with_multiple_points_plotly(alpha_reward_list, alpha_reward_traj)
-    plot_triangle_with_multiple_points(alpha_reward_list, alpha_reward_traj)
+    plot_triangle_with_multiple_points_plotly(alpha_reward_list, alpha_reward_traj, plot_traj)
+    plot_triangle_with_multiple_points(alpha_reward_list, alpha_reward_traj, plot_traj)
 
 
 def projection_convex_hull(p, p1, p2, p3):
@@ -716,13 +742,11 @@ def main(cfg_raw: DictConfig):
     eval_agent = create_new_DQN_agent(cfg_raw, eval_env_agent)
     #eval_agent = create_new_TD3_agent(cfg_raw, eval_env_agent)
 
-    list_agents_traj = read_and_sort_agents()
+    list_agents_traj = read_and_sort_agents("dqn_agents", "CartPole-v1")
+    #list_agents_traj = read_and_sort_agents("td3_agents", "Swimmer-v3")
     list_policies_traj = load_policies(list_agents_traj)
 
-
-
-    policies_visualization(eval_agent, 80, load_policies(loaded_agents), list_policies_traj)
-
+    policies_visualization(eval_agent, 10, load_policies(loaded_agents), list_policies_traj, plot_traj=False)
 
 
 
