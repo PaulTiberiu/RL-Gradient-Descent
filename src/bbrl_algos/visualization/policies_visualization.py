@@ -36,11 +36,21 @@ from cvxopt import matrix, solvers
 from matplotlib.colors import LinearSegmentedColormap
 
 
-def extract_number_from_filename(filename):
+# def extract_number_from_filename(filename):
+#     """
+#     Extracts the numerical value (XXX) from a filename of the form "CartPole-v1dqnXXX.agt"True
+#     """
+#     match = re.search(r'CartPole-v1dqn(\d+\.\d+).agt', filename)
+#     if match:
+#         return float(match.group(1))
+#     return None
+
+def extract_number_from_filename(filename, env_name_algo):
     """
-    Extracts the numerical value (XXX) from a filename of the form "CartPole-v1dqnXXX.agt"True
+    Extracts the numerical value (XXX) from a filename of the form "{env_name_algo}XXX.agt"
     """
-    match = re.search(r'CartPole-v1dqn(\d+\.\d+).agt', filename)
+    pattern = rf'{env_name_algo}(\d+\.\d+).agt'
+    match = re.search(pattern, filename)
     if match:
         return float(match.group(1))
     return None
@@ -83,6 +93,8 @@ def read_and_sort_agents(dirname, env_name): #dirname, env_name
         loaded_agents = []
 
         agent = Agent()
+
+        #print(agt_files)
     
         # Iterate over each file and load the agent using agent.load_model
         for file in agt_files:
@@ -93,16 +105,16 @@ def read_and_sort_agents(dirname, env_name): #dirname, env_name
         return loaded_agents
 
 
-def get_best_policy(date, time, suffix):
+def get_best_policy(date, time, suffix, env_name_algo, algo, directory):
     """
     Stocker la meilleure politique dans un fichier
     """
     # Path to the directory containing the best agents
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    source_dir = os.path.join(script_directory, "..", "algos", "dqn", "tmp", "hydra", date, time, "dqn_best_agents")
+    source_dir = os.path.join(script_directory, "..", "algos", algo, "tmp", "hydra", date, time, directory)
     
     # Path to the destination directory in the visualization folder
-    destination_dir = os.path.join(script_directory, "dqn_best_agents")
+    destination_dir = os.path.join(script_directory, directory)
     
     # Create the destination directory if it doesn't exist
     os.makedirs(destination_dir, exist_ok=True)
@@ -111,10 +123,18 @@ def get_best_policy(date, time, suffix):
     agt_files = [f for f in os.listdir(source_dir) if f.endswith(".agt")]
     
     # Extract the values from each folder and append them to an array
-    values_array = [extract_number_from_filename(agt_file) for agt_file in agt_files]
+    env_algo = env_name_algo + algo
+    values_array = [extract_number_from_filename(agt_file, env_algo) for agt_file in agt_files]
     
-    # Find the index of the folder with the maximum value
-    max_index = values_array.index(max(values_array))
+    filtered_values = [val for val in values_array if val is not None]
+    print(filtered_values)
+
+    # Trouver l'indice du maximum dans filtered_values
+    if filtered_values:
+        max_index = values_array.index(max(filtered_values))
+    else:
+        # Gérer le cas où il n'y a aucun élément valide dans values_array
+        max_index = None
     
     # Get the folder with the maximum value
     max_value_agt_file = agt_files[max_index]
@@ -132,7 +152,6 @@ def get_best_policy(date, time, suffix):
     # print("Values array:", values_array)
     # print("File with max value:", max_value_agt_file)
     # print("File with max value copied successfully to:", destination_dir)
-
 
 
 def load_best_agent(directory):
@@ -446,7 +465,6 @@ def create_new_DQN_agent(cfg, env_agent):
     return eval_agent
 
 def create_new_TD3_agent(cfg, env_agent):
-
     # Create the agent
     obs_size, act_size = env_agent.get_obs_and_actions_sizes()
     policy = globals()["ContinuousDeterministicActor"](
@@ -466,6 +484,7 @@ def evaluate_agent(eval_agent, theta):
     eval_agent(workspace, t=0, stop_variable="env/done", render=False)
 
     rewards = workspace["env/cumulated_reward"][-1]
+    print(rewards)
     mean_reward = rewards.mean()
 
     return mean_reward
@@ -732,18 +751,28 @@ def main(cfg_raw: DictConfig):
 
     date = "2024-03-20" 
     time = "12-11-42"
-    get_best_policy(date, time, 1)
+    get_best_policy(date, time, 1, "CartPole-v1", "dqn", "dqn_best_agents")
                                                                                          
     date = "2024-03-20" 
     time = "12-14-28"
-    get_best_policy(date, time, 2)
+    get_best_policy(date, time, 2, "CartPole-v1", "dqn", "dqn_best_agents")
 
     date = "2024-03-20" 
     time = "12-16-48"
-    get_best_policy(date, time, 3)
+    get_best_policy(date, time, 3, "CartPole-v1", "dqn", "dqn_best_agents")
+
+    # date = "2024-03-30" 
+    # time = "12-48-26"
+    # get_best_policy(date, time, 1, "Swimmer-v3", "td3", "td3_best_agents")
+                                                                                         
+    # time = "12-56-03"
+    # get_best_policy(date, time, 2, "Swimmer-v3", "td3", "td3_best_agents")
+
+    # time = "13-03-51"
+    # get_best_policy(date, time, 3, "Swimmer-v3", "td3", "td3_best_agents")
 
     loaded_agents = load_best_agent("dqn_best_agents")
-    #loaded_agents = load_best_agent("td3_best_agents_swimmer")                                                         
+    #loaded_agents = load_best_agent("td3_best_agents_swimmer")     
 
     _, eval_env_agent = local_get_env_agents(cfg_raw)
     eval_agent = create_new_DQN_agent(cfg_raw, eval_env_agent)
@@ -753,7 +782,7 @@ def main(cfg_raw: DictConfig):
     #list_agents_traj = read_and_sort_agents("td3_agents", "Swimmer-v3")
     list_policies_traj = load_policies(list_agents_traj)
 
-    policies_visualization(eval_agent, 80, load_policies(loaded_agents), list_policies_traj, plot_traj=True)
+    #policies_visualization(eval_agent, 80, load_policies(loaded_agents), list_policies_traj, plot_traj=True)
 
 
 
