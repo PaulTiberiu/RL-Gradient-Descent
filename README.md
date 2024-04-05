@@ -1,5 +1,5 @@
 # Visualization Tools for Reinforcement Learning algorithms
-This tool was completed for the P-ANDROIDE project during the first year of the Master's program in ANDROIDE computer science at Sorbonne University. Our project showcases two main components:
+This tool was completed for the P-ANDROIDE project during the first year of the Master's program ANDROIDE in computer science at Sorbonne University. Our project showcases two main components:
 
 ## Histograms
 In this part, we are focusing on analyzing the loss, the norm of distances between two policies, and the norm of gradients within the framework of the gradient descent algorithm, specifically with the use of the DQN algorithm.
