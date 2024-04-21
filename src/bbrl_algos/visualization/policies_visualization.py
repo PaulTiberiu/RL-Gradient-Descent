@@ -35,6 +35,10 @@ import plotly.graph_objects as go
 from cvxopt import matrix, solvers
 from matplotlib.colors import LinearSegmentedColormap
 
+from visualization_tools import save
+
+
+
 
 # def extract_number_from_filename(filename):
 #     """
@@ -127,7 +131,7 @@ def get_best_policy(date, time, suffix, env_name_algo, algo, directory):
     values_array = [extract_number_from_filename(agt_file, env_algo) for agt_file in agt_files]
     
     filtered_values = [val for val in values_array if val is not None]
-    print(filtered_values)
+    #print(filtered_values)
 
     # Trouver l'indice du maximum dans filtered_values
     if filtered_values:
@@ -484,7 +488,7 @@ def evaluate_agent(eval_agent, theta):
     eval_agent(workspace, t=0, stop_variable="env/done", render=False)
 
     rewards = workspace["env/cumulated_reward"][-1]
-    print(rewards)
+    #print(rewards)
     mean_reward = rewards.mean()
 
     return mean_reward
@@ -739,6 +743,44 @@ def projection_convex_hull(p, p1, p2, p3):
     return a1, a2, a3
 
 
+def evo_algo(nbeval, nb_individuals, triangle_policies, agent):
+    bestFit = float('-inf')
+    bestIt = 0
+    dimensions = len(triangle_policies)
+
+    for nb_iterations in range(nbeval):
+        
+        # Generate nb_individuals random alphas whose sum is equal to 1
+        alphas = np.random.uniform(0, 1, (nb_individuals, dimensions))
+
+        # Normalize alphas so that their sum equals 1
+        alphas /= np.sum(alphas, axis=1)[:, np.newaxis]
+
+        # Compute the new policies
+        thetas = [update_policy_with_coefficients(triangle_policies, alpha) for alpha in alphas]
+        
+        # Compute the new rewards adding some noise
+        rewards = [evaluate_agent(agent, theta) + np.random.normal(0, 0.1) for theta in thetas]
+
+        sorted_indices = np.argsort(rewards)
+
+        # Take the 3 best-performing policies
+        best_3_policies = [thetas[idx] for idx in sorted_indices[:3]]
+
+        if rewards[sorted_indices[0]] > bestFit:
+            bestFit = rewards[sorted_indices[0]]
+            bestIt = nb_iterations
+        
+        # Update the policies used at each iteration
+        triangle_policies = best_3_policies
+        print("Iteration", nb_iterations)
+        print("Best fit", bestFit, "at iteration", bestIt)
+
+    print("Best fit", bestFit, "at iteration", bestIt)
+
+    return bestFit
+
+
 @hydra.main(
     config_path="../algos/dqn/configs/",
     config_name="dqn_cartpole.yaml",
@@ -784,6 +826,12 @@ def main(cfg_raw: DictConfig):
 
     #policies_visualization(eval_agent, 80, load_policies(loaded_agents), list_policies_traj, plot_traj=True)
 
+    # Evolutionary algorithm
+    nbeval = 10
+    nb_individuals = 20
+    triangle_policies = load_policies(loaded_agents)
+    best_3_policies = evo_algo(nbeval, nb_individuals, triangle_policies, eval_agent)
+    print("Evo algo: ", best_3_policies)
 
 
 if __name__ == "__main__":
