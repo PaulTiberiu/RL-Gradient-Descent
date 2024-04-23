@@ -743,7 +743,9 @@ def projection_convex_hull(p, p1, p2, p3):
     return a1, a2, a3
 
 
-def evo_algo(nbeval, nb_individuals, triangle_policies, agent):
+
+
+def evo_algo(nbeval, nb_individuals, triangle_policies, agent, noise_scale=0.1):
     bestFit = float('-inf')
     bestIt = 0
     dimensions = len(triangle_policies)
@@ -758,14 +760,19 @@ def evo_algo(nbeval, nb_individuals, triangle_policies, agent):
 
         # Compute the new policies
         thetas = [update_policy_with_coefficients(triangle_policies, alpha) for alpha in alphas]
+
+        # Adding noise to the policies
+        noisy_thetas = [theta + noise_scale * torch.randn(len(theta)) for theta in thetas]
         
         # Compute the new rewards adding some noise
-        rewards = [evaluate_agent(agent, theta) + np.random.normal(0, 0.1) for theta in thetas]
+        rewards = [evaluate_agent(agent, noisy_theta).item() for noisy_theta in noisy_thetas]
 
         sorted_indices = np.argsort(rewards)
-
+        
         # Take the 3 best-performing policies
         best_3_policies = [thetas[idx] for idx in sorted_indices[:3]]
+
+        sorted_indices = sorted_indices[::-1]
 
         if rewards[sorted_indices[0]] > bestFit:
             bestFit = rewards[sorted_indices[0]]
