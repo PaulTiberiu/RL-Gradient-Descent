@@ -688,7 +688,7 @@ def policies_visualization(eval_agent, num_points, loaded_policies, policies_tra
 
 def projection_convex_hull(p, p1, p2, p3):
     """
-    Find the projection of a point onto the convex hull defined by three points q, r and s.
+    Find the projection of a point onto the convex hull defined by three points p1, p2 and p3.
 
     Parameters:
         p (numpy.array): The point to be projected.
