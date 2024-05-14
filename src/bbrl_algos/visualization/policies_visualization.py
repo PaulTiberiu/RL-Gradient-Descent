@@ -749,6 +749,7 @@ def evo_algo(nbeval, nb_individuals, triangle_policies, agent, noise_scale=0.1):
     bestFit = float('-inf')
     bestIt = 0
     dimensions = len(triangle_policies)
+    traj = []
 
     for nb_iterations in range(nbeval):
         
@@ -763,12 +764,15 @@ def evo_algo(nbeval, nb_individuals, triangle_policies, agent, noise_scale=0.1):
 
         # Adding noise to the policies
         noisy_thetas = [theta + noise_scale * torch.randn(len(theta)) for theta in thetas]
+
+        for noisy_policy in noisy_thetas:
+            traj.append(noisy_policy)
         
         # Compute the new rewards adding some noise
         rewards = [evaluate_agent(agent, noisy_theta).item() for noisy_theta in noisy_thetas]
 
         sorted_indices = np.argsort(rewards)
-        
+
         # Take the 3 best-performing policies
         best_3_policies = [thetas[idx] for idx in sorted_indices[:3]]
 
@@ -785,7 +789,8 @@ def evo_algo(nbeval, nb_individuals, triangle_policies, agent, noise_scale=0.1):
 
     print("Best fit", bestFit, "at iteration", bestIt)
 
-    return bestFit
+    return bestFit, traj
+
 
 
 @hydra.main(
@@ -834,11 +839,14 @@ def main(cfg_raw: DictConfig):
     #policies_visualization(eval_agent, 80, load_policies(loaded_agents), list_policies_traj, plot_traj=True)
 
     # Evolutionary algorithm
-    nbeval = 10
+    #nbeval = 10
+    nbeval = 1
     nb_individuals = 20
     triangle_policies = load_policies(loaded_agents)
-    best_3_policies = evo_algo(nbeval, nb_individuals, triangle_policies, eval_agent)
+    best_3_policies, traj = evo_algo(nbeval, nb_individuals, triangle_policies, eval_agent)
     print("Evo algo: ", best_3_policies)
+
+    policies_visualization(eval_agent, 60, load_policies(loaded_agents), traj, plot_traj=True)
 
 
 if __name__ == "__main__":
